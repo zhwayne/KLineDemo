@@ -8,8 +8,8 @@
 import Foundation
 
 /// 将 `KLineItem` 与其计算出的指标关联起来。
-struct IndicatorData<Item> {
-    let item: Item
+struct IndicatorData {
+    let item: KLineItem
     private var indicators: [IndicatorKey: Any] = [:] // 存储不同指标的值
     
     /// 为特定的指标键设置指标值。
@@ -31,7 +31,7 @@ struct IndicatorData<Item> {
         return indicators[key] as? T
     }
     
-    init(item: Item) {
+    init(item: KLineItem) {
         self.item = item
     }
 }

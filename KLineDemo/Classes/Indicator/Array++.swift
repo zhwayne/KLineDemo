@@ -14,7 +14,7 @@ extension Array where Element == KLineItem {
     /// - Returns: 包含原始 `KLineItem` 和关联指标的 `IndicatorData` 数组。
     func decorateWithIndicators<Calculator: IndicatorCalculator>(
         calculators: [Calculator]
-    ) async throws -> [IndicatorData<Element>] {
+    ) async throws -> [IndicatorData] {
         var decoratedItems = self.map { IndicatorData(item: $0) }
         
         // 使用抛出任务组进行并发计算
@@ -45,7 +45,7 @@ extension Array where Element == KLineItem {
     }
 }
 
-extension Collection where Element == IndicatorData<KLineItem> {
+extension Collection where Element == IndicatorData {
     /// 计算特定数值型指标的范围（最大值和最小值）。
     ///
     /// - Parameter key: 要计算范围的 `IndicatorKey`。

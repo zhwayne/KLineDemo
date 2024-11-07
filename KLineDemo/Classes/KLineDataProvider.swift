@@ -9,7 +9,7 @@ import Foundation
 
 protocol KLineDataProvider {
     var kLineItems: [KLineItem] { get }  // K 线数据数组
-    var indicators: [IndicatorData<KLineItem>] { get }  // 包含各种计算出的指标
+    var indicators: [IndicatorData] { get }  // 包含各种计算出的指标
 }
 
 extension KLineDataProvider {
@@ -24,7 +24,7 @@ extension KLineDataProvider {
 }
 
 final class KLineDataSource: KLineDataProvider {
-    private(set) var indicators: [IndicatorData<KLineItem>] = []
+    private(set) var indicators: [IndicatorData] = []
     private(set) var kLineItems: [KLineItem] = []
     
     private var calculators: [AnyIndicatorCalculator]
@@ -33,9 +33,22 @@ final class KLineDataSource: KLineDataProvider {
         self.calculators = calculators.map { $0.eraseToAnyCalculator() }
     }
     
-    func update(items: [KLineItem]) async throws {
-        let indicators = try await items.decorateWithIndicators(calculators: calculators)
-        self.kLineItems = items
-        self.indicators = indicators
+    func update(items: [KLineItem]) async {
+        // TODO: 增量计算，减少计算量
+        if let indicators = try? await items.decorateWithIndicators(calculators: calculators) {
+            self.kLineItems = items
+            self.indicators = indicators
+        }
+    }
+    
+    func install(calculator: any IndicatorCalculator) {
+        if calculators.contains(where: { $0.key == calculator.key }) {
+            return
+        }
+        calculators.append(calculator.eraseToAnyCalculator())
+    }
+    
+    func removeCalculator(for key: IndicatorKey) {
+        calculators.removeAll { $0.key == key }
     }
 }

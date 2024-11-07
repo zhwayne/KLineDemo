@@ -17,17 +17,10 @@ class ViewController: UIViewController {
         // Do any additional setup after loading the view.
         
         view.addSubview(chartView)
-        
-//        chartView.translatesAutoresizingMaskIntoConstraints = false
-//        chartView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
-//        chartView.rightAnchor.constraint(equalTo: view.rightAnchor).isActive = true
-//        chartView.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true
-//        chartView.heightAnchor.constraint(equalToConstant: 250).isActive = true
-//
+
         chartView.snp.makeConstraints { make in
             make.left.right.equalTo(view.safeAreaLayoutGuide)
             make.centerY.equalToSuperview()
-            make.width.equalTo(chartView.snp.height).multipliedBy(16.0 / 9)
         }
         
         // 解析 plist
@@ -48,11 +41,12 @@ class ViewController: UIViewController {
             )
         }
         
-        StyleConfiguration.shared.indicatorStyle[.ma(period: 10)] = .init(color: .orange, lineWidth: 1)
-        StyleConfiguration.shared.indicatorStyle[.ma(period: 30)] = .init(color: .red, lineWidth: 1)
-        StyleConfiguration.shared.indicatorStyle[.ma(period: 60)] = .init(color: .purple, lineWidth: 1)
-        
-        chartView.reloadData(items: items.reversed())
+        chartView.reloadData(items: items.reversed(), scrollPosition: .end)
     }
 }
 
+import SwiftUI
+
+#Preview {
+    ViewController()
+}

@@ -25,36 +25,53 @@ struct RSICalculator: IndicatorCalculator {
             throw IndicatorCalculationError.insufficientData(period: period)
         }
         
-        var result = [Double?](repeating: nil, count: items.count)
+        // RSI 结果数组，前 `period` 天没有足够数据，RSI 值为 nil
+        var rsiValues: [Double?] = Array(repeating: nil, count: items.count)
         var gains: [Double] = []
         var losses: [Double] = []
         
-        for i in 1..<items.count {
+        // 初始化：计算第一个平均涨幅和平均跌幅
+        for i in 1...period {
             let change = items[i].closing - items[i - 1].closing
-            let gain = max(0, change)
-            let loss = max(0, -change)
-            gains.append(gain)
-            losses.append(loss)
-            
-            if i >= period {
-                let start = i - period + 1
-                let end = i + 1
-                
-                let periodGains = gains[(start - 1)..<end]
-                let periodLosses = losses[(start - 1)..<end]
-                
-                let avgGain = periodGains.reduce(0, +) / Double(period)
-                let avgLoss = periodLosses.reduce(0, +) / Double(period)
-                
-                if avgLoss == 0 {
-                    result[i] = 100
-                } else {
-                    let rs = avgGain / avgLoss
-                    result[i] = 100 - (100 / (1 + rs))
-                }
+            if change > 0 {
+                gains.append(change)
+                losses.append(0)
+            } else {
+                gains.append(0)
+                losses.append(abs(change))
             }
         }
         
-        return result
+        var avgGain = gains.reduce(0, +) / Double(period)
+        var avgLoss = losses.reduce(0, +) / Double(period)
+        
+        // 计算第一个 RSI 值
+        if avgLoss == 0 {
+            rsiValues[period] = 100.0  // 若无损失，RSI 为 100
+        } else {
+            let rs = avgGain / avgLoss
+            rsiValues[period] = 100 - (100 / (1 + rs))
+        }
+        
+        // 迭代计算后续的 RSI 值
+        for i in (period + 1)..<items.count {
+            let change = items[i].closing - items[i - 1].closing
+            let gain = max(change, 0)
+            let loss = max(-change, 0)
+            
+            // 平滑处理更新平均涨幅和平均跌幅
+            avgGain = ((avgGain * Double(period - 1)) + gain) / Double(period)
+            avgLoss = ((avgLoss * Double(period - 1)) + loss) / Double(period)
+            
+            // 计算 RSI
+            if avgLoss == 0 {
+                rsiValues[i] = 100.0
+            } else {
+                let rs = avgGain / avgLoss
+                rsiValues[i] = 100 - (100 / (1 + rs))
+            }
+        }
+        
+        return rsiValues
     }
 }
