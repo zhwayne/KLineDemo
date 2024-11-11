@@ -15,20 +15,28 @@ enum KLineChartSection: Sendable {
 @MainActor class KLineView: UIView {
     
     private let scrollView = UIScrollView()
-    private let canvasView = UIView()
+    private let scrollContainer = UIView()
+    private let candlestickView = UIView()
+    private let timelineView = UIView()
     private let legendLabel = UILabel()
+    
+    private var candlestickViewHeight: CGFloat = 300
+    private var timelineViewHeight: CGFloat = 16
+    private var indicatorContainerHeight: CGFloat = 32
     
     private lazy var indicatorContainer = UICollectionView(frame: .zero, collectionViewLayout: makeIndicatorContainerLayout())
     private var indicatorListDataSource: UICollectionViewDiffableDataSource<Int, IndicatorType>!
-    private var canvasLeftConstraint: Constraint!
+    private var scrollContainerLeft: Constraint!
     
-    private var styleManager: StyleManager { .shared }
-    private var dataProvider: KLineDataSource!
-    private lazy var candlestickRenderer = CandlestickRenderer(style: styleManager.candlestickStyle)
+    private lazy var candlestickRenderer = CandlestickRenderer(style: styleManager.candleStyle)
+    private lazy var timelineRenderer = TimelineRenderer(style: styleManager.candleStyle)
+    
     private var mainRenderers: [AnyChartRenderer<IndicatorData>] = []
     private var subRenderers: [AnyChartRenderer<IndicatorData>] = []
     private var mainIndicatorTypes: [IndicatorType] = []
     private var subIndicatorTypes: [IndicatorType] = []
+    private var styleManager: StyleManager { .shared }
+    private var dataProvider: KLineDataSource!
     
     // pinch
     private var pinchCenterX: CGFloat = 0
@@ -44,7 +52,7 @@ enum KLineChartSection: Sendable {
         addSubview(indicatorContainer)
         indicatorContainer.snp.makeConstraints { make in
             make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(32)
+            make.height.equalTo(indicatorContainerHeight)
         }
         setupIndicatorListDataSource()
         
@@ -54,8 +62,6 @@ enum KLineChartSection: Sendable {
         scrollView.delegate = self
         scrollView.delaysContentTouches = false
         scrollView.alwaysBounceVertical = false
-        scrollView.layer.borderWidth = 1 / UIScreen.main.scale
-        scrollView.layer.borderColor = UIColor.systemFill.cgColor
         
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
@@ -63,17 +69,31 @@ enum KLineChartSection: Sendable {
             make.bottom.equalTo(indicatorContainer.snp.top)
         }
         
-        scrollView.addSubview(canvasView)
-        canvasView.snp.makeConstraints { make in
-            make.top.width.height.equalToSuperview()
-            canvasLeftConstraint = make.left.equalTo(scrollView).offset(0).constraint
+        scrollView.addSubview(scrollContainer)
+        scrollContainer.snp.makeConstraints { make in
+            make.top.width.equalToSuperview()
+            make.height.equalToSuperview().offset(-indicatorContainerHeight)
+            scrollContainerLeft = make.left.equalTo(scrollView).offset(0).constraint
+        }
+        
+        scrollContainer.addSubview(candlestickView)
+        candlestickView.snp.makeConstraints { make in
+            make.top.left.width.equalToSuperview()
+            make.height.equalTo(candlestickViewHeight)
+        }
+        
+        scrollContainer.addSubview(timelineView)
+        timelineView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.equalTo(candlestickView.snp.bottom)
+            make.height.equalTo(timelineViewHeight)
         }
         
         legendLabel.numberOfLines = 0
         addSubview(legendLabel)
         legendLabel.snp.makeConstraints { make in
             make.left.equalTo(8)
-            make.right.lessThanOrEqualTo(-12)
+            make.right.lessThanOrEqualTo(-100)
             make.top.equalTo(8)
         }
         
@@ -88,7 +108,7 @@ enum KLineChartSection: Sendable {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func reloadData(items: [KLineItem], scrollPosition: ScrollPosition = .top) {
+    func reloadData(items: [KLineItem], scrollPosition: ScrollPosition = .end) {
         Task {
             await dataProvider.update(items: items)
             redrawContent(scrollPosition: scrollPosition)
@@ -97,8 +117,14 @@ enum KLineChartSection: Sendable {
     
     override var intrinsicContentSize: CGSize {
         var size = super.intrinsicContentSize
-        size.height = 320
+        size.height = [candlestickViewHeight, timelineViewHeight, indicatorContainerHeight].reduce(0, +)
         return size
+    }
+    
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        drawVisiableItems()
     }
 }
 
@@ -244,11 +270,17 @@ extension KLineView {
     }
     
     private func injectIndicatorStyleIfNeeded(to renderer: any ChartRenderer) {
-        if let configurableReader = renderer as? StyleConfigurable {
-            configurableReader.candlestickWidth = styleManager.candlestickStyle.lineWidth
+        if let configurableReader = renderer as? IndicatorStyleConfigurable {
+            configurableReader.candleWidth = styleManager.candleStyle.lineWidth
             if let style = styleManager.style(for: configurableReader.indicatorKey) {
                 configurableReader.chartStyle = style
             }
+        }
+    }
+    
+    private func injectMainStyleIfNeeded(to renderer: any ChartRenderer) {
+        if let configurableReader = renderer as? CandlestickStyleConfigurable {
+            configurableReader.style = styleManager.candleStyle
         }
     }
 }
@@ -259,8 +291,8 @@ extension KLineView {
         switch pinch.state {
         case .began:
             scrollView.isScrollEnabled = false
-            let p1 = pinch.location(ofTouch: 0, in: canvasView)
-            let p2 = pinch.location(ofTouch: 1, in: canvasView)
+            let p1 = pinch.location(ofTouch: 0, in: scrollContainer)
+            let p2 = pinch.location(ofTouch: 1, in: scrollContainer)
             pinchCenterX = (p1.x + p2.x) / 2
             oldScale = 1.0
         case .changed:
@@ -272,10 +304,10 @@ extension KLineView {
         
         let difValue = pinch.scale - oldScale
         
-        let newLineWidth = styleManager.candlestickStyle.lineWidth * (difValue + 1)
-        guard (1...20).contains(newLineWidth) else { return }
+        let newLineWidth = styleManager.candleStyle.lineWidth * (difValue + 1)
+        guard (1...40).contains(newLineWidth) else { return }
         
-        styleManager.candlestickStyle.lineWidth = newLineWidth
+        styleManager.candleStyle.lineWidth = newLineWidth
         oldScale = pinch.scale
         
         // 更新 contentSize
@@ -305,9 +337,15 @@ extension KLineView {
 extension KLineView {
     
     private var visiableRange: Range<Int> {
-        let itemCountToBeDrawn = max(Int(ceil(scrollView.frame.width / (styleManager.candlestickStyle.gap + styleManager.candlestickStyle.lineWidth))) + 1, 0)
+        let itemWidth = styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap
+        let visiableWidth = if scrollView.contentOffset.x > 0 {
+            scrollView.frame.width
+        } else {
+            max(scrollView.frame.width + scrollView.contentOffset.x, 0)
+        }
+        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)) + 1, 0)
         let offsetX = max(scrollView.contentOffset.x, 0)
-        let startIndex = max(Int(floor(offsetX / (styleManager.candlestickStyle.gap + styleManager.candlestickStyle.lineWidth))), 0)
+        let startIndex = max(Int(floor(offsetX / itemWidth)), 0)
         guard startIndex < dataProvider.kLineItems.count else { return 0..<0 }
         return startIndex..<min(startIndex + itemCountToBeDrawn, dataProvider.kLineItems.count)
     }
@@ -342,17 +380,17 @@ extension KLineView {
     
     private func updateScrollViewContentSize() {
         let count = CGFloat(dataProvider.kLineItems.count)
-        let contentWidth = count * styleManager.candlestickStyle.lineWidth + styleManager.candlestickStyle.gap * (count - 1)
+        let contentWidth = count * styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap * (count - 1)
         scrollView.contentSize = CGSize(
-            width: max(contentWidth, scrollView.bounds.width),
+            width: max(contentWidth, scrollView.bounds.width),// + scrollView.bounds.width * 0.5,
             height: scrollView.bounds.height
         )
     }
     
     private func drawVisiableItems() {
         guard !visiableRange.isEmpty else { return }
-        let offset = CGFloat(visiableRange.lowerBound) * (styleManager.candlestickStyle.gap + styleManager.candlestickStyle.lineWidth) - scrollView.contentOffset.x
-        let rect = CGRect(x: offset, y: 0, width: canvasView.frame.width, height: canvasView.frame.height)
+        let offset = CGFloat(visiableRange.lowerBound) * (styleManager.candleStyle.gap + styleManager.candleStyle.lineWidth) - scrollView.contentOffset.x
+        let rect = CGRect(x: offset, y: 0, width: scrollContainer.bounds.width, height: scrollContainer.bounds.height)
         drawVisiableItems(in: rect)
     }
     
@@ -365,7 +403,8 @@ extension KLineView {
     }
     
     private func drawVisiableItems(in rect: CGRect) {
-        canvasView.layer.sublayers = nil
+        candlestickView.layer.sublayers = nil
+        timelineView.layer.sublayers = nil
         
         // 获取可见区域内数据的 metricBounds
         guard var metricBounds = visiableItems.bounds else { return }
@@ -386,23 +425,53 @@ extension KLineView {
         if legendSize.height > 0 {
             offsetY += legendSize.height + 8
         }
-        let adjustedRect = rect.inset(by: .init(top: offsetY, left: 0, bottom: 0, right: 0))
+        
+        let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candlestickViewHeight - offsetY)
 
         // 创建转换器
-        let transformer = DefaultChartTransformer(
-            itemWidth: styleManager.candlestickStyle.lineWidth + styleManager.candlestickStyle.gap,
+        let candlestickTransformer = DefaultChartTransformer(
+            itemWidth: styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap,
             dataMin: metricBounds.minimum,
             dataMax: metricBounds.maximum,
-            viewPort: adjustedRect
+            viewPort: candlestickRect
         )
         
-        print(canvasView.frame.width)
+        // 主图部分
+        injectMainStyleIfNeeded(to: candlestickRenderer)
+        candlestickRenderer.draw(
+            in: candlestickView.layer,
+            rect: candlestickRect,
+            transformer: candlestickTransformer,
+            items: dataProvider.kLineItems,
+            range: visiableRange
+        )
         
-        candlestickRenderer.style = styleManager.candlestickStyle
-        candlestickRenderer.draw(in: canvasView.layer, rect: adjustedRect, transformer: transformer, values: visiableItems)
+        let timelineRect = timelineView.bounds
+        injectMainStyleIfNeeded(to: timelineRenderer)
+        let tiemlineTransformer = DefaultChartTransformer(
+            itemWidth: styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap,
+            dataMin: metricBounds.minimum,
+            dataMax: metricBounds.maximum,
+            viewPort: timelineRect
+        )
+        timelineRenderer.draw(
+            in: timelineView.layer,
+            rect: timelineRect,
+            transformer: candlestickTransformer,
+            items: dataProvider.kLineItems,
+            range: visiableRange
+        )
         
+        // 主图指标部分
         mainRenderers.forEach { renderer in
-            renderer.draw(in: canvasView.layer, rect: adjustedRect, transformer: transformer, values: visiableIndicatorDatas)
+            injectIndicatorStyleIfNeeded(to: renderer)
+            renderer.draw(
+                in: candlestickView.layer,
+                rect: candlestickRect,
+                transformer: candlestickTransformer,
+                items: dataProvider.indicators,
+                range: visiableRange
+            )
         }
         
         subRenderers.forEach { renderer in
@@ -451,8 +520,10 @@ extension KLineView {
 extension KLineView: UIScrollViewDelegate {
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        canvasLeftConstraint.update(offset: max(scrollView.contentOffset.x, 0))
-        drawVisiableItems()
+        if scrollView === self.scrollView {
+            scrollContainerLeft.update(offset: scrollView.contentOffset.x)
+            drawVisiableItems()
+        }
     }
 }
 
@@ -487,13 +558,14 @@ private class IndicatorCell: UICollectionViewCell {
     
     override var isSelected: Bool {
         didSet {
-            label.textColor = isSelected ? .label : .tertiaryLabel
+            label.textColor = isSelected ? .label : .secondaryLabel
         }
     }
 }
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 #Preview {
     ViewController()
 }

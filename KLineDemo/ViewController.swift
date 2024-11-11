@@ -47,6 +47,7 @@ class ViewController: UIViewController {
 
 import SwiftUI
 
+@available(iOS 17.0, *)
 #Preview {
     ViewController()
 }

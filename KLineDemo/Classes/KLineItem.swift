@@ -20,6 +20,8 @@ struct KLineItem: Equatable, Sendable {
     let volume: Int          // 成交量
     let value: Double        // 成交额
     let timestamp: Int       // 时间戳
+    
+    var timelineVisiable: Bool = false
 }
 
 extension KLineItem {

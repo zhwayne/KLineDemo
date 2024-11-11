@@ -15,7 +15,7 @@ struct ChartStyle {
     // 可以根据需要添加更多样式属性
 }
 
-struct CandlestickStyle {
+struct CandleStyle {
     var upColor: UIColor = .systemPink
     var downColor: UIColor = .systemTeal
     var lineWidth: CGFloat = 10
@@ -29,7 +29,7 @@ class StyleManager {
     
     private init() {}
     
-    var candlestickStyle = CandlestickStyle()
+    var candleStyle = CandleStyle()
     
     private var styles: [IndicatorKey: ChartStyle] = [
         .ma(period: 5): .init(lineColor: .systemPink, lineWidth: 1),
@@ -52,9 +52,13 @@ class StyleManager {
     }
 }
 
+protocol CandlestickStyleConfigurable: AnyObject {
+    var style: CandleStyle { get set }
+}
+
 /// 让绘制器能够接收样式配置，而又不直接依赖于 StyleManager，定义一个 StyleConfigurable 协议
-protocol StyleConfigurable: AnyObject {
+protocol IndicatorStyleConfigurable: AnyObject {
     var indicatorKey: IndicatorKey { get }
     var chartStyle: ChartStyle? { get set }
-    var candlestickWidth: CGFloat { get set }
+    var candleWidth: CGFloat { get set }
 }

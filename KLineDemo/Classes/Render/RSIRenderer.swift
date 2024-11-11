@@ -7,9 +7,9 @@
 
 import UIKit
 
-class RSIRenderer: ChartRenderer, StyleConfigurable {
+class RSIRenderer: ChartRenderer, IndicatorStyleConfigurable {
     
-    typealias Value = IndicatorData
+    typealias Item = IndicatorData
     
     let period: Int
     
@@ -17,13 +17,13 @@ class RSIRenderer: ChartRenderer, StyleConfigurable {
     
     var chartStyle: ChartStyle?
     
-    var candlestickWidth: CGFloat = 0
+    var candleWidth: CGFloat = 0
     
     init(period: Int) {
         self.period = period
     }
     
-    func draw(in layer: CALayer, rect: CGRect, transformer: ChartTransformer, values: [Value]) {
+    func draw(in layer: CALayer, rect: CGRect, transformer: any ChartTransformer, items: [Item], range: Range<Int>) {
         guard let chartStyle else {
             return
         }
@@ -35,7 +35,7 @@ class RSIRenderer: ChartRenderer, StyleConfigurable {
         sublayer.fillColor = chartStyle.fillColor?.cgColor
         sublayer.strokeColor = chartStyle.lineColor.cgColor
         
-        let visiableItems = values
+        let visiableItems = items[range]
         let path = UIBezierPath()
         
         for (idx, item) in visiableItems.enumerated() {
@@ -43,7 +43,7 @@ class RSIRenderer: ChartRenderer, StyleConfigurable {
                 continue
             }
             // 计算 x 坐标
-            let x = transformer.transformX(index: idx) + candlestickWidth * 0.5
+            let x = transformer.transformX(index: idx) + candleWidth * 0.5
             let y = transformer.transformY(value: value)
             let centerX = x
             let point = CGPoint(x: centerX, y: y)

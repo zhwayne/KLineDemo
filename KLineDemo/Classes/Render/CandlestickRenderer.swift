@@ -7,28 +7,28 @@
 
 import UIKit
 
-class CandlestickRenderer: ChartRenderer {
+class CandlestickRenderer: ChartRenderer, CandlestickStyleConfigurable {
     
-    typealias Value = KLineItem
+    typealias Item = KLineItem
     
-    var style: CandlestickStyle
+    var style: CandleStyle
     
-    init(style: CandlestickStyle) {
+    init(style: CandleStyle) {
         self.style = style
     }
     
-    func draw(in layer: CALayer, rect: CGRect, transformer: ChartTransformer, values: [Value]) {
-
+    func draw(in layer: CALayer, rect: CGRect, transformer: any ChartTransformer, items: [KLineItem], range: Range<Int>) {
         let sublayer = CALayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         
-        let visiableItems = values
+        let visiableItems = items[range]
+        
         
         for (idx, item) in visiableItems.enumerated() {
             // 计算 x 坐标
             let x = transformer.transformX(index: idx)
-    
+
             // 计算开盘价和收盘价的 y 坐标
             let openY = transformer.transformY(value: item.opening)
             let closeY = transformer.transformY(value: item.closing)
@@ -63,4 +63,11 @@ class CandlestickRenderer: ChartRenderer {
         
         layer.addSublayer(sublayer)
     }
+}
+
+import SwiftUI
+
+@available(iOS 17.0, *)
+#Preview {
+    ViewController()
 }
