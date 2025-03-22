@@ -7,6 +7,7 @@
 
 import UIKit
 import SnapKit
+import Combine
 
 enum KLineChartSection: Sendable {
     case mainChart, subChart
@@ -14,79 +15,61 @@ enum KLineChartSection: Sendable {
 
 @MainActor class KLineView: UIView {
     
-    private let scrollView = UIScrollView()
-    private let scrollContainer = UIView()
+    private let scrollView: HorizontalScrollView
     private let candlestickView = UIView()
     private let timelineView = UIView()
     private let legendLabel = UILabel()
+    private let indicatorTypeView: IndicatorTypeView
     
-    private var candlestickViewHeight: CGFloat = 300
-    private var timelineViewHeight: CGFloat = 16
-    private var indicatorContainerHeight: CGFloat = 32
+    private var candlestickHeight: CGFloat = 300
+    private var timelineHeight: CGFloat = 16
+    private var indicatorHeight: CGFloat = 32
     
-    private lazy var indicatorContainer = UICollectionView(frame: .zero, collectionViewLayout: makeIndicatorContainerLayout())
-    private var indicatorListDataSource: UICollectionViewDiffableDataSource<Int, IndicatorType>!
-    private var scrollContainerLeft: Constraint!
-    
-    private lazy var candlestickRenderer = CandlestickRenderer(style: styleManager.candleStyle)
-    private lazy var timelineRenderer = TimelineRenderer(style: styleManager.candleStyle)
-    
+    private let candlestickRenderer: CandlestickRenderer
+    private let timelineRenderer: TimelineRenderer
     private var mainRenderers: [AnyChartRenderer<IndicatorData>] = []
     private var subRenderers: [AnyChartRenderer<IndicatorData>] = []
+    
     private var mainIndicatorTypes: [IndicatorType] = []
     private var subIndicatorTypes: [IndicatorType] = []
-    private var styleManager: StyleManager { .shared }
+    private let styleManager: StyleManager
     private var dataProvider: KLineDataSource!
     
-    // pinch
-    private var pinchCenterX: CGFloat = 0
-    private var oldScale: CGFloat = 1
+    private var disposeBag = Set<AnyCancellable>()
     
-    override init(frame: CGRect) {
-        super.init(frame: frame)
+    required init(styleManager: StyleManager = .shared) {
+        self.styleManager = styleManager
+        scrollView = HorizontalScrollView(styleManager: styleManager)
+        indicatorTypeView = IndicatorTypeView(mainIndicators: [.ma, .ema])
+        candlestickRenderer = CandlestickRenderer(style: styleManager.candleStyle)
+        timelineRenderer = TimelineRenderer(style: styleManager.candleStyle)
         
-        indicatorContainer.backgroundColor = .clear
-        indicatorContainer.allowsMultipleSelection = true
-        indicatorContainer.register(IndicatorCell.self, forCellWithReuseIdentifier: "cell")
-        indicatorContainer.delegate = self
-        addSubview(indicatorContainer)
-        indicatorContainer.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(indicatorContainerHeight)
-        }
-        setupIndicatorListDataSource()
-        
-        scrollView.alwaysBounceHorizontal = true
-        scrollView.showsVerticalScrollIndicator = false
-        scrollView.showsHorizontalScrollIndicator = false
+        super.init(frame: .zero)
         scrollView.delegate = self
-        scrollView.delaysContentTouches = false
-        scrollView.alwaysBounceVertical = false
+        
+        addSubview(indicatorTypeView)
+        indicatorTypeView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo(indicatorHeight)
+        }
         
         addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
             make.left.right.top.equalToSuperview()
-            make.bottom.equalTo(indicatorContainer.snp.top)
+            make.bottom.equalTo(indicatorTypeView.snp.top)
         }
         
-        scrollView.addSubview(scrollContainer)
-        scrollContainer.snp.makeConstraints { make in
-            make.top.width.equalToSuperview()
-            make.height.equalToSuperview().offset(-indicatorContainerHeight)
-            scrollContainerLeft = make.left.equalTo(scrollView).offset(0).constraint
-        }
-        
-        scrollContainer.addSubview(candlestickView)
+        scrollView.contentView.addSubview(candlestickView)
         candlestickView.snp.makeConstraints { make in
             make.top.left.width.equalToSuperview()
-            make.height.equalTo(candlestickViewHeight)
+            make.height.equalTo(candlestickHeight)
         }
         
-        scrollContainer.addSubview(timelineView)
+        scrollView.contentView.addSubview(timelineView)
         timelineView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalTo(candlestickView.snp.bottom)
-            make.height.equalTo(timelineViewHeight)
+            make.height.equalTo(timelineHeight)
         }
         
         legendLabel.numberOfLines = 0
@@ -97,11 +80,8 @@ enum KLineChartSection: Sendable {
             make.top.equalTo(8)
         }
         
-        // pinch
-        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(Self.handlePinch(_:)))
-        scrollView.addGestureRecognizer(pinch)
-        
         dataProvider = KLineDataSource(calculators: [])
+        setupBindings()
     }
     
     required init?(coder: NSCoder) {
@@ -110,14 +90,16 @@ enum KLineChartSection: Sendable {
     
     func reloadData(items: [KLineItem], scrollPosition: ScrollPosition = .end) {
         Task {
+            scrollView.klineItemCount = items.count
             await dataProvider.update(items: items)
-            redrawContent(scrollPosition: scrollPosition)
+            scrollView.scroll(to: scrollPosition)
+            drawVisiableItems()
         }
     }
     
     override var intrinsicContentSize: CGSize {
         var size = super.intrinsicContentSize
-        size.height = [candlestickViewHeight, timelineViewHeight, indicatorContainerHeight].reduce(0, +)
+        size.height = [candlestickHeight, timelineHeight, indicatorHeight].reduce(0, +)
         return size
     }
     
@@ -126,64 +108,22 @@ enum KLineChartSection: Sendable {
         super.traitCollectionDidChange(previousTraitCollection)
         drawVisiableItems()
     }
-}
-
-extension KLineView: UICollectionViewDelegate {
     
-    private func makeIndicatorContainerLayout() -> UICollectionViewLayout {
-        let itemSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        let groupSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
-        let group: NSCollectionLayoutGroup = if #available(iOS 16, *) {
-            .horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 1)
-        } else {
-            .horizontal(layoutSize: groupSize, subitem: item, count: 1)
-        }
-        let section = NSCollectionLayoutSection(group: group)
-        //section.orthogonalScrollingBehavior = .continuous
-        section.interGroupSpacing = 16
-        section.contentInsets = .init(top: 0, leading: 12, bottom: 0, trailing: 12)
+    private func setupBindings() {
+        indicatorTypeView.drawMainIndicatorPublisher
+            .sink { [unowned self] type in drawMainIndicator(type: type) }
+            .store(in: &disposeBag)
         
-        let config = UICollectionViewCompositionalLayoutConfiguration()
-        config.scrollDirection = .horizontal
-        let layout = UICollectionViewCompositionalLayout(section: section, configuration: config)
-        return layout
-    }
-    
-    private func setupIndicatorListDataSource() {
-        indicatorListDataSource = .init(collectionView: indicatorContainer, cellProvider: { collectionView, indexPath, itemIdentifier in
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! IndicatorCell
-            cell.label.text = itemIdentifier.rawValue
-            return cell
-        })
-        
-        // 配置主图指标
-        let indicators: [IndicatorType] = [
-            .ma, .ema
-        ]
-        var snapshot = NSDiffableDataSourceSnapshot<Int, IndicatorType>()
-        snapshot.appendSections([0])
-        snapshot.appendItems(indicators)
-        indicatorListDataSource.apply(snapshot)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let snapshot = indicatorListDataSource.snapshot()
-        let type = snapshot.itemIdentifiers[indexPath.item]
-        drawMainIndicator(type: type)
-    }
-    
-    func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
-        let snapshot = indicatorListDataSource.snapshot()
-        let type = snapshot.itemIdentifiers[indexPath.item]
-        eraseMainIndicator(type: type)
+        indicatorTypeView.eraseMainIndicatorPublisher
+            .sink { [unowned self] type in eraseMainIndicator(type: type) }
+            .store(in: &disposeBag)
     }
 }
 
 extension KLineView {
     
     private func drawMainIndicator(type: IndicatorType) {
-        type.keys.forEach { key in
+        for key in type.keys {
             switch key {
             case .ma(let period):
                 let renderer = MARenderer(period: period)
@@ -202,22 +142,22 @@ extension KLineView {
         if !mainIndicatorTypes.contains(type) {
             mainIndicatorTypes.append(type)
         }
-        reloadData(items: dataProvider.kLineItems, scrollPosition: .none)
+        reloadData(items: dataProvider.kLineItems, scrollPosition: .current)
     }
     
     private func eraseMainIndicator(type: IndicatorType) {
-        type.keys.forEach { key in
+        for key in type.keys {
             removeMainRenderer(for: key)
             dataProvider.removeCalculator(for: key)
         }
         if let index =  mainIndicatorTypes.firstIndex(of: type) {
             mainIndicatorTypes.remove(at: index)
         }
-        reloadData(items: dataProvider.kLineItems, scrollPosition: .none)
+        reloadData(items: dataProvider.kLineItems, scrollPosition: .current)
     }
     
     private func drawSubIndicator(type: IndicatorType) {
-        type.keys.forEach { key in
+        for key in type.keys {
             switch key {
             case .vol:
                 break
@@ -235,18 +175,18 @@ extension KLineView {
         if !subIndicatorTypes.contains(type) {
             subIndicatorTypes.append(type)
         }
-        reloadData(items: dataProvider.kLineItems, scrollPosition: .none)
+        reloadData(items: dataProvider.kLineItems, scrollPosition: .current)
     }
     
     private func eraseSubIndicator(type: IndicatorType) {
-        type.keys.forEach { key in
+        for key in type.keys {
             removeSubRenderer(for: key)
             dataProvider.removeCalculator(for: key)
         }
         if let index =  subIndicatorTypes.firstIndex(of: type) {
             subIndicatorTypes.remove(at: index)
         }
-        reloadData(items: dataProvider.kLineItems, scrollPosition: .none)
+        reloadData(items: dataProvider.kLineItems, scrollPosition: .current)
     }
     
     // 添加主图绘制器
@@ -286,120 +226,25 @@ extension KLineView {
 }
 
 extension KLineView {
-    
-    @objc private func handlePinch(_ pinch: UIPinchGestureRecognizer) {
-        switch pinch.state {
-        case .began:
-            scrollView.isScrollEnabled = false
-            let p1 = pinch.location(ofTouch: 0, in: scrollContainer)
-            let p2 = pinch.location(ofTouch: 1, in: scrollContainer)
-            pinchCenterX = (p1.x + p2.x) / 2
-            oldScale = 1.0
-        case .changed:
-            break;
-            
-        default:
-            scrollView.isScrollEnabled = true
-        }
-        
-        let difValue = pinch.scale - oldScale
-        
-        let newLineWidth = styleManager.candleStyle.lineWidth * (difValue + 1)
-        guard (1...40).contains(newLineWidth) else { return }
-        
-        styleManager.candleStyle.lineWidth = newLineWidth
-        oldScale = pinch.scale
-        
-        // 更新 contentSize
-        let contentOffsetAtPinch = scrollView.contentOffset.x + pinchCenterX
-        let oldContentSize = scrollView.contentSize
-        updateScrollViewContentSize()
-        
-        
-        // 算新的内容偏移量
-        let newContentOffsetAtPinch = contentOffsetAtPinch * (scrollView.contentSize.width / oldContentSize.width)
-        var newContentOffsetX = newContentOffsetAtPinch - pinchCenterX
-        
-        // 限制偏移量的范围
-        newContentOffsetX = max(0, newContentOffsetX)
-        let maxContentOffsetX = scrollView.contentSize.width - scrollView.bounds.width
-        newContentOffsetX = min(maxContentOffsetX, newContentOffsetX)
-
-        // 更新 contentOffset 并重绘内容
-        if scrollView.contentOffset.x == newContentOffsetX {
-            scrollViewDidScroll(scrollView)
-        } else {
-            scrollView.contentOffset.x = newContentOffsetX
-        }
-    }
-}
-
-extension KLineView {
-    
-    private var visiableRange: Range<Int> {
-        let itemWidth = styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap
-        let visiableWidth = if scrollView.contentOffset.x > 0 {
-            scrollView.frame.width
-        } else {
-            max(scrollView.frame.width + scrollView.contentOffset.x, 0)
-        }
-        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)) + 1, 0)
-        let offsetX = max(scrollView.contentOffset.x, 0)
-        let startIndex = max(Int(floor(offsetX / itemWidth)), 0)
-        guard startIndex < dataProvider.kLineItems.count else { return 0..<0 }
-        return startIndex..<min(startIndex + itemCountToBeDrawn, dataProvider.kLineItems.count)
-    }
-    
-    private func redrawContent(scrollPosition: ScrollPosition) {
-        // 获取当前的显示位置比例
-        let currentOffsetX = scrollView.contentOffset.x
-        let currentContentWidth = scrollView.contentSize.width
-        let offsetRatio = currentContentWidth > 0 ? currentOffsetX / currentContentWidth : 0
-
-        // 更新内容大小
-        updateScrollViewContentSize()
-        
-        var offsetX: CGFloat
-        if scrollPosition == .top {
-            offsetX = 0
-        } else if scrollPosition == .end {
-            // 显示最后一屏
-            offsetX = scrollView.contentSize.width - scrollView.frame.width
-        } else {
-            // 保持当前显示位置不变
-            let updatedContentWidth = scrollView.contentSize.width
-            offsetX = offsetRatio * updatedContentWidth
-        }
-        
-        // 设置新的 contentOffset，确保不超出范围
-        scrollView.contentOffset.x = max(0, min(offsetX, scrollView.contentSize.width - scrollView.frame.width))
-        
-        // 绘制可见的项目
-        drawVisiableItems()
-    }
-    
-    private func updateScrollViewContentSize() {
-        let count = CGFloat(dataProvider.kLineItems.count)
-        let contentWidth = count * styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap * (count - 1)
-        scrollView.contentSize = CGSize(
-            width: max(contentWidth, scrollView.bounds.width),// + scrollView.bounds.width * 0.5,
-            height: scrollView.bounds.height
-        )
-    }
-    
+   
     private func drawVisiableItems() {
-        guard !visiableRange.isEmpty else { return }
-        let offset = CGFloat(visiableRange.lowerBound) * (styleManager.candleStyle.gap + styleManager.candleStyle.lineWidth) - scrollView.contentOffset.x
-        let rect = CGRect(x: offset, y: 0, width: scrollContainer.bounds.width, height: scrollContainer.bounds.height)
+        guard !scrollView.visiableRange.isEmpty else { return }
+        let lowerBound = CGFloat(scrollView.visiableRange.lowerBound)
+        let width = styleManager.candleStyle.gap + styleManager.candleStyle.lineWidth
+        let offset = lowerBound * (width) - scrollView.contentOffset.x
+        let rect = CGRect(x: offset, y: 0,
+                          width: scrollView.contentView.bounds.width,
+                          height: scrollView.contentView.bounds.height
+        )
         drawVisiableItems(in: rect)
     }
     
     private var visiableItems: [KLineItem] {
-        Array(dataProvider.kLineItems[visiableRange])
+        Array(dataProvider.kLineItems[scrollView.visiableRange])
     }
     
     private var visiableIndicatorDatas: [IndicatorData] {
-        Array(dataProvider.indicators[visiableRange])
+        Array(dataProvider.indicators[scrollView.visiableRange])
     }
     
     private func drawVisiableItems(in rect: CGRect) {
@@ -426,7 +271,7 @@ extension KLineView {
             offsetY += legendSize.height + 8
         }
         
-        let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candlestickViewHeight - offsetY)
+        let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candlestickHeight - offsetY)
 
         // 创建转换器
         let candlestickTransformer = DefaultChartTransformer(
@@ -443,7 +288,7 @@ extension KLineView {
             rect: candlestickRect,
             transformer: candlestickTransformer,
             items: dataProvider.kLineItems,
-            range: visiableRange
+            range: scrollView.visiableRange
         )
         
         let timelineRect = timelineView.bounds
@@ -459,7 +304,7 @@ extension KLineView {
             rect: timelineRect,
             transformer: candlestickTransformer,
             items: dataProvider.kLineItems,
-            range: visiableRange
+            range: scrollView.visiableRange
         )
         
         // 主图指标部分
@@ -470,7 +315,7 @@ extension KLineView {
                 rect: candlestickRect,
                 transformer: candlestickTransformer,
                 items: dataProvider.indicators,
-                range: visiableRange
+                range: scrollView.visiableRange
             )
         }
         
@@ -521,51 +366,7 @@ extension KLineView: UIScrollViewDelegate {
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
-            scrollContainerLeft.update(offset: scrollView.contentOffset.x)
             drawVisiableItems()
         }
     }
-}
-
-extension KLineView {
-    
-    enum ScrollPosition {
-        case top, end, none
-    }
-}
-
-
-private class IndicatorCell: UICollectionViewCell {
-    
-    let label = UILabel()
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        label.font = .systemFont(ofSize: 13)
-        label.textColor = .secondaryLabel
-        label.textAlignment = .center
-        label.setContentCompressionResistancePriority(.required, for: .horizontal)
-        
-        contentView.addSubview(label)
-        label.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-    override var isSelected: Bool {
-        didSet {
-            label.textColor = isSelected ? .label : .secondaryLabel
-        }
-    }
-}
-
-import SwiftUI
-
-@available(iOS 17.0, *)
-#Preview {
-    ViewController()
 }
