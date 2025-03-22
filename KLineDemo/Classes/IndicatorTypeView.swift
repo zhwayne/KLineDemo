@@ -103,7 +103,7 @@ private class IndicatorCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         label.font = .systemFont(ofSize: 13)
-        label.textColor = .secondaryLabel
+        label.textColor = .systemGray2
         label.textAlignment = .center
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         
@@ -119,7 +119,7 @@ private class IndicatorCell: UICollectionViewCell {
     
     override var isSelected: Bool {
         didSet {
-            label.textColor = isSelected ? .label : .secondaryLabel
+            label.textColor = isSelected ? .label : .systemGray2
         }
     }
 }

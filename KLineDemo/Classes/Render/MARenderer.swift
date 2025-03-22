@@ -39,7 +39,7 @@ class MARenderer: ChartRenderer, IndicatorStyleConfigurable {
         let path = UIBezierPath()
         
         for (idx, item) in visiableItems.enumerated() {
-            guard let value = item.getIndicator(forKey: indicatorKey, as: Double.self) else {
+            guard let value: Double = item.getIndicator(forKey: indicatorKey) else {
                 continue
             }
             // 计算 x 坐标

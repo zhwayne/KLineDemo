@@ -20,7 +20,7 @@ struct CandleStyle {
     var downColor: UIColor = .systemTeal
     var lineWidth: CGFloat = 10
     var gap: CGFloat { 1 }
-    
+        
     init() { }
 }
 

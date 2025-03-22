@@ -27,7 +27,7 @@ struct IndicatorData {
     ///   - key: 指标键。
     ///   - type: 指标值的类型。
     /// - Returns: 指标值，若不存在或类型不匹配则返回 `nil`。
-    func getIndicator<T>(forKey key: IndicatorKey, as type: T.Type) -> T? {
+    func getIndicator<T>(forKey key: IndicatorKey) -> T? {
         return indicators[key] as? T
     }
     

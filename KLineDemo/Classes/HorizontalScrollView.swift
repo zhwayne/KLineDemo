@@ -21,6 +21,7 @@ final class HorizontalScrollView: UIScrollView {
     
     // 样式管理器
     private let styleManager: StyleManager
+    private var candleStyle: CandleStyle { styleManager.candleStyle }
     
     let contentView = ContentView()
     
@@ -55,7 +56,9 @@ final class HorizontalScrollView: UIScrollView {
         super.layoutSubviews()
         let origin = CGPoint(x: contentOffset.x, y: 0)
         let contentFrame = CGRect(origin: origin, size: bounds.size)
-        contentView.frame = contentFrame.inset(by: contentInset)
+        contentView.frame = contentFrame
+        let padding = bounds.width / 2
+        contentInset = UIEdgeInsets(top: 0, left: padding, bottom: 0, right: padding)
     }
     
     @objc private func handlePinch(_ pinch: UIPinchGestureRecognizer) {
@@ -75,7 +78,7 @@ final class HorizontalScrollView: UIScrollView {
         
         let difValue = pinch.scale - oldScale
         
-        let newLineWidth = styleManager.candleStyle.lineWidth * (difValue + 1)
+        let newLineWidth = candleStyle.lineWidth * (difValue + 1)
         guard (1...40).contains(newLineWidth) else { return }
         
         styleManager.candleStyle.lineWidth = newLineWidth
@@ -88,12 +91,13 @@ final class HorizontalScrollView: UIScrollView {
         
         
         // 算新的内容偏移量
-        let newContentOffsetAtPinch = contentOffsetAtPinch * (contentSize.width / oldContentSize.width)
+        let scale = contentSize.width / oldContentSize.width
+        let newContentOffsetAtPinch = contentOffsetAtPinch * scale
         var newContentOffsetX = newContentOffsetAtPinch - pinchCenterX
         
         // 限制偏移量的范围
-        newContentOffsetX = max(0, newContentOffsetX)
-        let maxContentOffsetX = contentSize.width - bounds.width
+        newContentOffsetX = max(-contentInset.left, newContentOffsetX)
+        let maxContentOffsetX = contentSize.width - bounds.width + contentInset.right
         newContentOffsetX = min(maxContentOffsetX, newContentOffsetX)
 
         // 更新 contentOffset 并重绘内容
@@ -108,15 +112,18 @@ final class HorizontalScrollView: UIScrollView {
     
     private func updateScrollViewContentSize() {
         let count = CGFloat(klineItemCount)
-        let contentWidth = count * styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap * (count - 1)
-        contentSize = CGSize(width: max(contentWidth, bounds.width), height: bounds.height - contentInset.bottom)
+        let itemWidth = candleStyle.lineWidth + candleStyle.gap
+        let contentWidth = count * itemWidth - candleStyle.gap
+        let width = max(contentWidth, bounds.width)
+        let height = bounds.height
+        contentSize = CGSize(width: width, height: height)
     }
 }
 
 extension HorizontalScrollView {
     
     var visiableRange: Range<Int> {
-        let itemWidth = styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap
+        let itemWidth = candleStyle.lineWidth + candleStyle.gap
         let visiableWidth = if contentOffset.x > 0 {
             frame.width
         } else {
@@ -129,28 +136,37 @@ extension HorizontalScrollView {
         return startIndex..<min(startIndex + itemCountToBeDrawn, klineItemCount)
     }
     
+    var visiableRect: CGRect {
+        guard !visiableRange.isEmpty else { return .zero }
+        let lowerBound = CGFloat(visiableRange.lowerBound)
+        let itemWidth = candleStyle.lineWidth + candleStyle.gap
+        let offset = lowerBound * (itemWidth) - contentOffset.x
+        let size = contentView.bounds
+        return CGRect(x: offset, y: 0, width: size.width, height: size.height)
+    }
+    
     func scroll(to scrollPosition: ScrollPosition) {
         // 获取当前的显示位置比例
-        let currentOffsetX = contentOffset.x
-        let currentContentWidth = contentSize.width
-        let offsetRatio = currentContentWidth > 0 ? currentOffsetX / currentContentWidth : 0
+        var offsetRatio: CGFloat = 0
+        if contentSize.width > 0 {
+            offsetRatio = contentOffset.x / contentSize.width
+        }
 
         // 更新内容大小
-        updateScrollViewContentSize()
+        // updateScrollViewContentSize()
         
-        var offsetX: CGFloat
+        var offsetX: CGFloat = 0
         if scrollPosition == .top {
-            offsetX = 0
+            offsetX = -contentInset.left
         } else if scrollPosition == .end {
             // 显示最后一屏
-            offsetX = contentSize.width - frame.width
+            offsetX = contentSize.width - frame.width + contentInset.right
         } else {
             // 保持当前显示位置不变
-            let updatedContentWidth = contentSize.width
-            offsetX = offsetRatio * updatedContentWidth
+            offsetX = offsetRatio * contentSize.width
         }
         
         // 设置新的 contentOffset，确保不超出范围
-        contentOffset.x = max(0, min(offsetX, contentSize.width - frame.width))
+        contentOffset.x = offsetX
     }
 }
