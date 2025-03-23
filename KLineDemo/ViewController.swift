@@ -11,7 +11,9 @@ import SwiftyJSON
 class ViewController: UIViewController {
     
     private let chartView = KLineView()
-
+    
+    private var client: WebSocketClient!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -22,6 +24,23 @@ class ViewController: UIViewController {
             make.left.right.equalTo(view.safeAreaLayoutGuide)
             make.centerY.equalToSuperview()
         }
+        
+        let config = WebSocketClient.Configuration(url: URL(string: "wss://npush.bibox360.com")!)
+        client = WebSocketClient(config: config)
+        
+        Task {
+            for await message in client.messages {
+                print(message)
+            }
+        }
+        Task {
+            do {
+                try await client.connect()
+            } catch {
+                print(error)
+            }
+        }
+        
         
         // 解析 plist
         let filePath = Bundle.main.path(forResource: "kline", ofType: "plist")!

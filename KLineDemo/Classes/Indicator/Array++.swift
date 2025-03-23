@@ -7,30 +7,20 @@
 
 import Foundation
 
-extension Array where Element == KLineItem {
+extension Collection where Element == KLineItem {
     /// 使用提供的计算器数组计算指标，并将结果装饰到数据中。
     ///
     /// - Parameter calculators: 用于计算指标的 `IndicatorCalculator` 数组。
     /// - Returns: 包含原始 `KLineItem` 和关联指标的 `IndicatorData` 数组。
-    func decorateWithIndicators<Calculator: IndicatorCalculator>(
-        calculators: [Calculator]
-    ) async throws -> [IndicatorData] {
+    func decorateWithIndicators(calculators: [any IndicatorCalculator]) async throws -> [IndicatorData] {
         var decoratedItems = self.map { IndicatorData(item: $0) }
         
         // 使用抛出任务组进行并发计算
         try await withThrowingTaskGroup(of: (IndicatorKey, [Any?]).self) { group in
             for calculator in calculators {
                 group.addTask {
-                    let values = try await calculator.calculate(for: self)
-                    // 使用类型擦除包装指标值
-                    let typeErasedValues: [Any?] = values.map { value in
-                        if let v = value {
-                            return v
-                        } else {
-                            return nil
-                        }
-                    }
-                    return (calculator.key, typeErasedValues)
+                    let values = try await calculator.calculate(for: Array(self))
+                    return (calculator.key, values)
                 }
             }
             
@@ -66,6 +56,18 @@ extension Collection where Element == IndicatorData {
         return MetricBounds(maximum: maxVal, minimum: minVal)
     }
 }
+
+extension Collection where Element == IndicatorData {
+    
+    /// 获取特定类型的指标值数组。
+    func indicatorValues<T>(for key: IndicatorKey) -> [T?] {
+        let result: [T?] = map { data in
+            data.getIndicator(forKey: key)
+        }
+        return result
+    }
+}
+
 
 extension Collection where Element == KLineItem {
     

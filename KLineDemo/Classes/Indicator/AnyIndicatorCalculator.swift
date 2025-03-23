@@ -12,22 +12,15 @@ struct AnyIndicatorCalculator: IndicatorCalculator {
     typealias Value = Any
     
     private let _key: IndicatorKey
-    private let _calculate: ([KLineItem]) async throws -> [Any?]
+    private let _calcFunc: ([KLineItem]) async throws -> [Any?]
     
     /// 初始化方法，接受任何符合 `IndicatorCalculator` 协议的计算器。
     ///
     /// - Parameter calculator: 具体的 `IndicatorCalculator` 实例。
     init<Calculator: IndicatorCalculator>(_ calculator: Calculator) {
         self._key = calculator.key
-        self._calculate = { items in
-            let values = try await calculator.calculate(for: items)
-            return values.map { value in
-                if let v = value {
-                    return v
-                } else {
-                    return nil
-                }
-            }
+        self._calcFunc = { items in
+            return try await calculator.calculate(for: items)
         }
     }
     
@@ -38,7 +31,7 @@ struct AnyIndicatorCalculator: IndicatorCalculator {
     
     /// 计算指标值，返回 `[Any?]`。
     func calculate(for items: [KLineItem]) async throws -> [Any?] {
-        return try await _calculate(items)
+        return try await _calcFunc(items)
     }
 }
 

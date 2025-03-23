@@ -33,7 +33,10 @@ enum KLineChartSection: Sendable {
     private var mainIndicatorTypes: [IndicatorType] = []
     private var subIndicatorTypes: [IndicatorType] = []
     private let styleManager: StyleManager
-    private let dataSource = KLineDataSource()
+    
+    private var indicatorDatas: [IndicatorData] = []
+    private var kLineItems: [KLineItem] = []
+    private var calculators: [any IndicatorCalculator] = []
     
     private var disposeBag = Set<AnyCancellable>()
     
@@ -87,12 +90,17 @@ enum KLineChartSection: Sendable {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func reloadData(items: [KLineItem], scrollPosition: ScrollPosition = .end) {
+    func reloadData(items: [KLineItem], scrollPosition: ScrollPosition) {
         Task {
-            scrollView.klineItemCount = items.count
-            await dataSource.update(items: items)
-            scrollView.scroll(to: scrollPosition)
-            drawVisiableItems()
+            do {
+                kLineItems = items
+                scrollView.klineItemCount = items.count
+                indicatorDatas = try await items.decorateWithIndicators(calculators: calculators)
+                scrollView.scroll(to: scrollPosition)
+                drawVisiableItems()
+            } catch {
+                print(error)
+            }
         }
     }
     
@@ -128,12 +136,12 @@ extension KLineView {
                 let renderer = MARenderer(period: period)
                 injectIndicatorStyleIfNeeded(to: renderer)
                 addMainRenderer(AnyChartRenderer(renderer, id: key))
-                dataSource.install(calculator: MACalculator(period: period))
+                calculators.append(MACalculator(period: period))
             case .ema(let period):
                 let renderer = EMARenderer(period: period)
                 injectIndicatorStyleIfNeeded(to: renderer)
                 addMainRenderer(AnyChartRenderer(renderer, id: key))
-                dataSource.install(calculator: EMACalculator(period: period))
+                calculators.append(EMACalculator(period: period))
             default:
                 break
             }
@@ -141,18 +149,18 @@ extension KLineView {
         if !mainIndicatorTypes.contains(type) {
             mainIndicatorTypes.append(type)
         }
-        reloadData(items: dataSource.kLineItems, scrollPosition: .current)
+        reloadData(items: kLineItems, scrollPosition: .current)
     }
     
     private func eraseMainIndicator(type: IndicatorType) {
         for key in type.keys {
             removeMainRenderer(for: key)
-            dataSource.removeCalculator(for: key)
+            calculators.removeAll(where: { $0.key == key })
         }
         if let index =  mainIndicatorTypes.firstIndex(of: type) {
             mainIndicatorTypes.remove(at: index)
         }
-        reloadData(items: dataSource.kLineItems, scrollPosition: .current)
+        reloadData(items: kLineItems, scrollPosition: .current)
     }
     
     private func drawSubIndicator(type: IndicatorType) {
@@ -164,7 +172,7 @@ extension KLineView {
                 let renderer = RSIRenderer(period: period)
                 injectIndicatorStyleIfNeeded(to: renderer)
                 addSubRenderer(AnyChartRenderer(renderer, id: key))
-                dataSource.install(calculator: RSICalculator(period: period))
+                calculators.append(RSICalculator(period: period))
             default:
                 break
             }
@@ -172,18 +180,18 @@ extension KLineView {
         if !subIndicatorTypes.contains(type) {
             subIndicatorTypes.append(type)
         }
-        reloadData(items: dataSource.kLineItems, scrollPosition: .current)
+        reloadData(items: kLineItems, scrollPosition: .current)
     }
     
     private func eraseSubIndicator(type: IndicatorType) {
         for key in type.keys {
             removeSubRenderer(for: key)
-            dataSource.removeCalculator(for: key)
+            calculators.removeAll(where: { $0.key == key })
         }
         if let index =  subIndicatorTypes.firstIndex(of: type) {
             subIndicatorTypes.remove(at: index)
         }
-        reloadData(items: dataSource.kLineItems, scrollPosition: .current)
+        reloadData(items: kLineItems, scrollPosition: .current)
     }
     
     // 添加主图绘制器
@@ -229,11 +237,13 @@ extension KLineView {
     }
     
     private var visiableItems: [KLineItem] {
-        Array(dataSource.kLineItems[scrollView.visiableRange])
+        if kLineItems.isEmpty { return [] }
+        return Array(kLineItems[scrollView.visiableRange])
     }
     
     private var visiableIndicatorDatas: [IndicatorData] {
-        Array(dataSource.indicators[scrollView.visiableRange])
+        if indicatorDatas.isEmpty { return [] }
+        return Array(indicatorDatas[scrollView.visiableRange])
     }
     
     private func drawVisiableItems(in rect: CGRect) {
@@ -277,7 +287,7 @@ extension KLineView {
             in: candlestickView.layer,
             rect: candlestickRect,
             transformer: candlestickTransformer,
-            items: dataSource.kLineItems,
+            items: kLineItems,
             range: scrollView.visiableRange
         )
         
@@ -293,7 +303,7 @@ extension KLineView {
             in: timelineView.layer,
             rect: timelineRect,
             transformer: tiemlineTransformer,
-            items: dataSource.kLineItems,
+            items: kLineItems,
             range: scrollView.visiableRange
         )
         
@@ -304,7 +314,7 @@ extension KLineView {
                 in: candlestickView.layer,
                 rect: candlestickRect,
                 transformer: candlestickTransformer,
-                items: dataSource.indicators,
+                items: indicatorDatas,
                 range: scrollView.visiableRange
             )
         }
