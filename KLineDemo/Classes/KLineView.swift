@@ -291,7 +291,7 @@ extension KLineView {
             range: scrollView.visiableRange
         )
         
-        let timelineRect = timelineView.bounds
+        let timelineRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: timelineHeight)
         injectMainStyleIfNeeded(to: timelineRenderer)
         let tiemlineTransformer = DefaultChartTransformer(
             itemWidth: itemWidth,

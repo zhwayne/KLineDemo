@@ -18,17 +18,48 @@ class TimelineRenderer: ChartRenderer, CandlestickStyleConfigurable {
     }
     
     func draw(in layer: CALayer, rect: CGRect, transformer: any ChartTransformer, items: [Item], range: Range<Int>) {
-
+        var rect = layer.bounds
+        
         let sublayer = CALayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
-                
+
+        // 时间 label 位置固定
         let visiableItems = Array(items[range])
-        let labelInterval = 6  // 控制标签密度，约 6 个标签
-        let labelWidth = rect.width / CGFloat(labelInterval - 1)
+        let labelCount = 6  // 控制标签密度，约 6 个标签
+        let labelWidth = rect.width / CGFloat(labelCount - 1)
         let itemWdith = style.lineWidth + style.gap
         
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MM-dd HH:mm"
         
+        for idx in (0..<labelCount) {
+            
+            let textLayer = CATextLayer()
+            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 9, nil)
+            textLayer.fontSize = 9
+            textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
+            textLayer.alignmentMode = .center
+            textLayer.contentsScale = UIScreen.main.scale
+            sublayer.addSublayer(textLayer)
+            
+            textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 10)
+//            if range.lowerBound == 0 {
+//                textLayer.position = CGPoint(x: CGFloat(labelCount - 1 - idx) * labelWidth, y: rect.midY)
+//            } else {
+                textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
+//            }
+            
+            let itemIndex = transformer.transformIndex(x: textLayer.position.x)
+            if itemIndex < visiableItems.count {
+                let item = visiableItems[itemIndex]
+                let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
+                let timeString = dateFormatter.string(from: date)
+                textLayer.string = timeString
+            } else {
+                textLayer.string = nil
+            }
+        }
         
 //        if rect.minX > 0 {
 //            let unvisiableCount = Int(ceil(rect.width / (style.lineWidth + style.gap))) - range.upperBound + 1

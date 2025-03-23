@@ -124,14 +124,16 @@ extension HorizontalScrollView {
     
     var visiableRange: Range<Int> {
         let itemWidth = candleStyle.lineWidth + candleStyle.gap
-        let visiableWidth = if contentOffset.x > 0 {
-            frame.width
-        } else {
+        var visiableWidth = if contentOffset.x < 0 {
             max(frame.width + contentOffset.x, 0)
+        } else if contentOffset.x > contentSize.width - bounds.width {
+            max(contentSize.width - contentOffset.x, 0)
+        } else {
+            frame.width
         }
-        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)) + 1, 0)
-        let offsetX = max(contentOffset.x, 0)
-        let startIndex = max(Int(floor(offsetX / itemWidth)), 0)
+        visiableWidth += itemWidth
+        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)), 0)
+        let startIndex = max(Int(floor(contentOffset.x / itemWidth)), 0)
         guard startIndex < klineItemCount else { return 0..<0 }
         return startIndex..<min(startIndex + itemCountToBeDrawn, klineItemCount)
     }
@@ -139,10 +141,12 @@ extension HorizontalScrollView {
     var visiableRect: CGRect {
         guard !visiableRange.isEmpty else { return .zero }
         let lowerBound = CGFloat(visiableRange.lowerBound)
+        let upperBound = CGFloat(visiableRange.upperBound)
         let itemWidth = candleStyle.lineWidth + candleStyle.gap
         let offset = lowerBound * (itemWidth) - contentOffset.x
-        let size = contentView.bounds
-        return CGRect(x: offset, y: 0, width: size.width, height: size.height)
+        let width = (upperBound - lowerBound) * itemWidth
+        let height = contentView.bounds.height
+        return CGRect(x: offset, y: 0, width: width, height: height)
     }
     
     func scroll(to scrollPosition: ScrollPosition) {

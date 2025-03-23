@@ -12,6 +12,8 @@ protocol ChartTransformer {
     /// 将数据索引映射为图表上的 x 坐标。
     func transformX(index: Int) -> CGFloat
     
+    func transformIndex(x: CGFloat) -> Int
+    
     /// 将数据值映射为图表上的 y 坐标。
     func transformY(value: Double) -> CGFloat
 }
@@ -34,6 +36,11 @@ struct DefaultChartTransformer: ChartTransformer {
         return CGFloat(index) * itemWidth
     }
 
+    func transformIndex(x: CGFloat) -> Int {
+        let x = Int(ceil(x / itemWidth))
+        return x
+    }
+    
     func transformY(value: Double) -> CGFloat {
         // 将数据值映射到图表高度上的位置。
         // valueRatio 表示数据值在最小值和最大值之间的归一化比例。
