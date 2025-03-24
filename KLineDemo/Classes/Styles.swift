@@ -51,14 +51,3 @@ class StyleManager {
         return styles[key]
     }
 }
-
-protocol CandlestickStyleConfigurable: AnyObject {
-    var style: CandleStyle { get set }
-}
-
-/// 让绘制器能够接收样式配置，而又不直接依赖于 StyleManager，定义一个 StyleConfigurable 协议
-protocol IndicatorStyleConfigurable: AnyObject {
-    var indicatorKey: IndicatorKey { get }
-    var chartStyle: ChartStyle? { get set }
-    var candleWidth: CGFloat { get set }
-}

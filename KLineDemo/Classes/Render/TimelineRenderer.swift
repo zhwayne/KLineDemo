@@ -7,52 +7,49 @@
 
 import UIKit
 
-class TimelineRenderer: ChartRenderer, CandlestickStyleConfigurable {
+struct TimelineRenderer: ChartRenderer {
     
     typealias Item = KLineItem
     
-    var style: CandleStyle
-    
-    init(style: CandleStyle) {
-        self.style = style
-    }
-    
-    func draw(in layer: CALayer, rect: CGRect, transformer: any ChartTransformer, items: [Item], range: Range<Int>) {
-        var rect = layer.bounds
+    func draw(in layer: CALayer, items: [KLineItem], indices: Range<Int>, context: RenderContext) {
+        let rect = layer.bounds
+        let transformer = context.transformer
         
         let sublayer = CALayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
-
+        
         // 时间 label 位置固定
-        let visiableItems = Array(items[range])
         let labelCount = 6  // 控制标签密度，约 6 个标签
         let labelWidth = rect.width / CGFloat(labelCount - 1)
-        let itemWdith = style.lineWidth + style.gap
         
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "MM-dd HH:mm"
         
+        // 网 items 中塞入 nil，以保证和 indices 元素数量相等
+        var adjustedItems: [KLineItem?] = items
+        indices.forEach { idx in
+            if idx < 0 {
+                adjustedItems.insert(nil, at: 0)
+            } else if  idx >= items.count {
+                adjustedItems.append(nil)
+            }
+        }
         for idx in (0..<labelCount) {
             
             let textLayer = CATextLayer()
             textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 9, nil)
-            textLayer.fontSize = 9
+            textLayer.fontSize = 10
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
             sublayer.addSublayer(textLayer)
-            
             textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 10)
-//            if range.lowerBound == 0 {
-//                textLayer.position = CGPoint(x: CGFloat(labelCount - 1 - idx) * labelWidth, y: rect.midY)
-//            } else {
-                textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
-//            }
+            textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
             
-            let itemIndex = transformer.transformIndex(x: textLayer.position.x)
-            if itemIndex < visiableItems.count {
-                let item = visiableItems[itemIndex]
+            let index = transformer.transformIndex(offset: textLayer.position.x)
+
+            if index >= 0 && index < adjustedItems.count, let item = adjustedItems[index] {
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
                 let timeString = dateFormatter.string(from: date)
                 textLayer.string = timeString
@@ -60,55 +57,6 @@ class TimelineRenderer: ChartRenderer, CandlestickStyleConfigurable {
                 textLayer.string = nil
             }
         }
-        
-//        if rect.minX > 0 {
-//            let unvisiableCount = Int(ceil(rect.width / (style.lineWidth + style.gap))) - range.upperBound + 1
-//            for idx in (range.lowerBound + unvisiableCount..<range.upperBound + unvisiableCount)  where idx.isMultiple(of: labelInterval) {
-//                let x =  transformer.transformX(index: idx)
-//                
-//                let item = visiableItems[idx - unvisiableCount]
-//                
-//                // 创建并配置时间标签
-//                let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
-//                let dateFormatter = DateFormatter()
-//                dateFormatter.dateFormat = "MM-dd HH:mm"
-//                let timeString = dateFormatter.string(from: date)
-//                            
-//                let textLayer = CATextLayer()
-//                textLayer.string = timeString
-//                textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 9, nil)
-//                textLayer.fontSize = 9
-//                textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
-//                textLayer.alignmentMode = .center
-//                textLayer.contentsScale = UIScreen.main.scale
-//                
-//                let labelX = x - (labelWidth) / 2
-//                textLayer.frame = CGRect(x: labelX - rect.origin.x, y: (rect.height - 12) * 0.5, width: labelWidth, height: 10)
-//                sublayer.addSublayer(textLayer)
-//            }
-//        } else {
-//            for (idx, item) in visiableItems.enumerated() where idx.isMultiple(of: labelInterval) {
-//                let x =  transformer.transformX(index: idx)
-//                
-//                // 创建并配置时间标签
-//                let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
-//                let dateFormatter = DateFormatter()
-//                dateFormatter.dateFormat = "MM-dd HH:mm"
-//                let timeString = dateFormatter.string(from: date)
-//                            
-//                let textLayer = CATextLayer()
-//                textLayer.string = timeString
-//                textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 9, nil)
-//                textLayer.fontSize = 9
-//                textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
-//                textLayer.alignmentMode = .center
-//                textLayer.contentsScale = UIScreen.main.scale
-//                
-//                let labelX = x - (labelWidth + style.lineWidth + style.gap) / 2
-//                textLayer.frame = CGRect(x: labelX - rect.origin.x, y: (rect.height - 12) * 0.5, width: labelWidth, height: 10)
-//                sublayer.addSublayer(textLayer)
-//            }
-//        }
         
         let topLinePath = UIBezierPath()
         topLinePath.move(to: CGPoint(x: -rect.origin.x, y: 0))
@@ -134,11 +82,4 @@ class TimelineRenderer: ChartRenderer, CandlestickStyleConfigurable {
         
         layer.addSublayer(sublayer)
     }
-}
-
-import SwiftUI
-
-@available(iOS 17.0, *)
-#Preview {
-    ViewController()
 }

@@ -7,43 +7,40 @@
 
 import UIKit
 
-class EMARenderer: ChartRenderer, IndicatorStyleConfigurable {
+struct EMARenderer: IndicatorRender {
     
     typealias Item = IndicatorData
     
     let period: Int
     
-    var indicatorKey: IndicatorKey { .ema(period: period) }
-    
-    var chartStyle: ChartStyle?
-    
-    var candleWidth: CGFloat = 0
+    var key: IndicatorKey { .ema(period: period) }
     
     init(period: Int) {
         self.period = period
     }
     
-    func draw(in layer: CALayer, rect: CGRect, transformer: any ChartTransformer, items: [Item], range: Range<Int>) {
-        guard let chartStyle else {
-            return
-        }
+    func draw(in layer: CALayer, items: [IndicatorData], indices: Range<Int>, context: RenderContext) {
+        
+        let transformer = context.transformer
+        let rect = transformer.frame(in: .layer)
+        let chartStyle = context.chartStyle
+        let candleStyle = context.candleStyle
         
         let sublayer = CAShapeLayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         sublayer.lineWidth = 1
-        sublayer.fillColor = chartStyle.fillColor?.cgColor
-        sublayer.strokeColor = chartStyle.lineColor.cgColor
+        sublayer.fillColor = chartStyle?.fillColor?.cgColor
+        sublayer.strokeColor = chartStyle?.lineColor.cgColor
         
-        let visiableItems = items[range]
         let path = UIBezierPath()
         
-        for (idx, item) in visiableItems.enumerated() {
-            guard let value: Double = item.getIndicator(forKey: indicatorKey) else {
+        for (idx, item) in items.enumerated() {
+            guard let value: Double = item.getIndicator(forKey: key) else {
                 continue
             }
             // 计算 x 坐标
-            let x = transformer.transformX(index: idx) + candleWidth * 0.5
+            let x = transformer.transformX(at: idx) + candleStyle.lineWidth * 0.5
             let y = transformer.transformY(value: value)
             let centerX = x
             let point = CGPoint(x: centerX, y: y)

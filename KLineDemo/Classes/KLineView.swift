@@ -25,10 +25,10 @@ enum KLineChartSection: Sendable {
     private var timelineHeight: CGFloat = 16
     private var indicatorHeight: CGFloat = 32
     
-    private let candlestickRenderer: CandlestickRenderer
-    private let timelineRenderer: TimelineRenderer
-    private var mainRenderers: [AnyChartRenderer<IndicatorData>] = []
-    private var subRenderers: [AnyChartRenderer<IndicatorData>] = []
+    private let candleRenderer = CandleRenderer()
+    private let timelineRenderer = TimelineRenderer()
+    private var mainRenderers: [AnyIndicatorRenderer<IndicatorData>] = []
+    private var subRenderers: [AnyIndicatorRenderer<IndicatorData>] = []
     
     private var mainIndicatorTypes: [IndicatorType] = []
     private var subIndicatorTypes: [IndicatorType] = []
@@ -44,8 +44,6 @@ enum KLineChartSection: Sendable {
         self.styleManager = styleManager
         scrollView = HorizontalScrollView(styleManager: styleManager)
         indicatorTypeView = IndicatorTypeView(mainIndicators: [.vol, .ma, .ema])
-        candlestickRenderer = CandlestickRenderer(style: styleManager.candleStyle)
-        timelineRenderer = TimelineRenderer(style: styleManager.candleStyle)
         
         super.init(frame: .zero)
         scrollView.delegate = self
@@ -133,14 +131,12 @@ extension KLineView {
         for key in type.keys {
             switch key {
             case .ma(let period):
-                let renderer = MARenderer(period: period)
-                injectIndicatorStyleIfNeeded(to: renderer)
-                addMainRenderer(AnyChartRenderer(renderer, id: key))
+                let render = MARenderer(period: period)
+                addMainRenderer(AnyIndicatorRenderer(render))
                 calculators.append(MACalculator(period: period))
             case .ema(let period):
-                let renderer = EMARenderer(period: period)
-                injectIndicatorStyleIfNeeded(to: renderer)
-                addMainRenderer(AnyChartRenderer(renderer, id: key))
+                let render = EMARenderer(period: period)
+                addMainRenderer(AnyIndicatorRenderer(render))
                 calculators.append(EMACalculator(period: period))
             default:
                 break
@@ -169,9 +165,8 @@ extension KLineView {
             case .vol:
                 break
             case .rsi(let period):
-                let renderer = RSIRenderer(period: period)
-                injectIndicatorStyleIfNeeded(to: renderer)
-                addSubRenderer(AnyChartRenderer(renderer, id: key))
+                let render = RSIRenderer(period: period)
+                addSubRenderer(AnyIndicatorRenderer(render))
                 calculators.append(RSICalculator(period: period))
             default:
                 break
@@ -195,12 +190,12 @@ extension KLineView {
     }
     
     // 添加主图绘制器
-    private func addMainRenderer(_ renderer: AnyChartRenderer<IndicatorData>) {
+    private func addMainRenderer(_ renderer: AnyIndicatorRenderer<IndicatorData>) {
         mainRenderers.append(renderer)
     }
     
     // 添加副图绘制器
-    private func addSubRenderer(_ renderer: AnyChartRenderer<IndicatorData>) {
+    private func addSubRenderer(_ renderer: AnyIndicatorRenderer<IndicatorData>) {
         subRenderers.append(renderer)
     }
     
@@ -213,21 +208,6 @@ extension KLineView {
     private func removeSubRenderer(for key: IndicatorKey) {
         subRenderers.removeAll { $0.key == key }
     }
-    
-    private func injectIndicatorStyleIfNeeded(to renderer: any ChartRenderer) {
-        if let configurableReader = renderer as? IndicatorStyleConfigurable {
-            configurableReader.candleWidth = styleManager.candleStyle.lineWidth
-            if let style = styleManager.style(for: configurableReader.indicatorKey) {
-                configurableReader.chartStyle = style
-            }
-        }
-    }
-    
-    private func injectMainStyleIfNeeded(to renderer: any ChartRenderer) {
-        if let configurableReader = renderer as? CandlestickStyleConfigurable {
-            configurableReader.style = styleManager.candleStyle
-        }
-    }
 }
 
 extension KLineView {
@@ -236,7 +216,7 @@ extension KLineView {
         drawVisiableItems(in: scrollView.visiableRect)
     }
     
-    private var visiableItems: [KLineItem] {
+    private var visiableKLineItems: [KLineItem] {
         if kLineItems.isEmpty { return [] }
         return Array(kLineItems[scrollView.visiableRange])
     }
@@ -250,8 +230,11 @@ extension KLineView {
         candlestickView.layer.sublayers = nil
         timelineView.layer.sublayers = nil
         
+        let visiableKLineItems = self.visiableKLineItems
+        let visiableIndicatorDatas = self.visiableIndicatorDatas
+                
         // 获取可见区域内数据的 metricBounds
-        guard var metricBounds = visiableItems.bounds else { return }
+        guard var metricBounds = visiableKLineItems.bounds else { return }
         mainRenderers.forEach { render in
             if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: render.key) {
                 metricBounds.combine(other: indicatorMetricBounds)
@@ -274,48 +257,54 @@ extension KLineView {
         let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candlestickHeight - offsetY)
 
         // 创建转换器
-        let candlestickTransformer = DefaultChartTransformer(
+        let candleTransformer = ChartTransformer(
             itemWidth: itemWidth,
-            dataMin: metricBounds.minimum,
-            dataMax: metricBounds.maximum,
-            viewPort: candlestickRect
+            viewPort: candlestickRect,
+            dataBounds: metricBounds,
+            scrollView: scrollView
         )
         
         // 主图部分
-        injectMainStyleIfNeeded(to: candlestickRenderer)
-        candlestickRenderer.draw(
+        candleRenderer.draw(
             in: candlestickView.layer,
-            rect: candlestickRect,
-            transformer: candlestickTransformer,
-            items: kLineItems,
-            range: scrollView.visiableRange
+            items: visiableKLineItems,
+            indices: scrollView.indices,
+            context: RenderContext(
+                transformer: candleTransformer,
+                candleStyle: styleManager.candleStyle,
+                chartStyle: nil
+            )
         )
         
         let timelineRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: timelineHeight)
-        injectMainStyleIfNeeded(to: timelineRenderer)
-        let tiemlineTransformer = DefaultChartTransformer(
+        let tiemlineTransformer = ChartTransformer(
             itemWidth: itemWidth,
-            dataMin: metricBounds.minimum,
-            dataMax: metricBounds.maximum,
-            viewPort: timelineRect
+            viewPort: timelineRect,
+            dataBounds: metricBounds,
+            scrollView: scrollView
         )
         timelineRenderer.draw(
             in: timelineView.layer,
-            rect: timelineRect,
-            transformer: tiemlineTransformer,
-            items: kLineItems,
-            range: scrollView.visiableRange
+            items: visiableKLineItems,
+            indices: scrollView.indices,
+            context: RenderContext(
+                transformer: tiemlineTransformer,
+                candleStyle: styleManager.candleStyle,
+                chartStyle: nil
+            )
         )
         
         // 主图指标部分
         mainRenderers.forEach { renderer in
-            injectIndicatorStyleIfNeeded(to: renderer)
             renderer.draw(
                 in: candlestickView.layer,
-                rect: candlestickRect,
-                transformer: candlestickTransformer,
-                items: indicatorDatas,
-                range: scrollView.visiableRange
+                items: visiableIndicatorDatas,
+                indices: scrollView.indices,
+                context: RenderContext(
+                    transformer: candleTransformer,
+                    candleStyle: styleManager.candleStyle,
+                    chartStyle: styleManager.style(for: renderer.key)
+                )
             )
         }
         
