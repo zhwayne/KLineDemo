@@ -41,6 +41,10 @@ class StyleManager {
         .ema(period: 5): .init(lineColor: .systemCyan, lineWidth: 1),
         .ema(period: 10): .init(lineColor: .systemYellow, lineWidth: 1),
         .ema(period: 20): .init(lineColor: .systemMint, lineWidth: 1),
+        
+        .rsi(period: 6): .init(lineColor: .systemMint, lineWidth: 1),
+        .rsi(period: 12): .init(lineColor: .systemRed, lineWidth: 1),
+        .rsi(period: 24): .init(lineColor: .systemPurple, lineWidth: 1)
     ]
     
     func setStyle(_ style: ChartStyle, for key: IndicatorKey) {

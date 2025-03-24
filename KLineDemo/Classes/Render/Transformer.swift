@@ -41,6 +41,6 @@ struct ChartTransformer: Transformer {
         // 将数据值映射到图表高度上的位置。
         // valueRatio 表示数据值在最小值和最大值之间的归一化比例。
         let valueRatio = CGFloat((value - dataBounds.minimum) / dataBounds.distance)
-        return viewPort.origin.y + (1.0 - valueRatio) * viewPort.height
+        return /*viewPort.origin.y +*/ (1.0 - valueRatio) * viewPort.height
     }
 }

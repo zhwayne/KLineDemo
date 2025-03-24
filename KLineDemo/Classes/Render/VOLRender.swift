@@ -11,12 +11,12 @@ struct VOLRender: IndicatorRenderer {
     
     typealias Item = IndicatorData
     
-    var key: IndicatorKey { .vol }
+    var type: IndicatorType { .vol }
     
     func draw(in layer: CALayer, items: [IndicatorData], indices: Range<Int>, context: RenderContext) {
         let transformer = context.transformer
         let rect = transformer.viewPort
-        let candleStyle = context.candleStyle
+        let candleStyle = context.styleManager.candleStyle
         
         let sublayer = CALayer()
         sublayer.frame = rect

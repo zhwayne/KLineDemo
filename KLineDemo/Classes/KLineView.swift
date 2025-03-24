@@ -172,15 +172,21 @@ extension KLineView {
 extension KLineView {
     
     private func drawMainIndicator(type: IndicatorType) {
+        switch type {
+        case .ma:
+            let render = MARenderer()
+            mainRenderers.append(AnyIndicatorRenderer(render))
+        case .ema:
+            let render = EMARenderer()
+            mainRenderers.append(AnyIndicatorRenderer(render))
+        default:
+            break
+        }
         for key in type.keys {
             switch key {
             case .ma(let period):
-                let render = MARenderer(period: period)
-                mainRenderers.append(AnyIndicatorRenderer(render))
                 calculators.append(MACalculator(period: period))
             case .ema(let period):
-                let render = EMARenderer(period: period)
-                mainRenderers.append(AnyIndicatorRenderer(render))
                 calculators.append(EMACalculator(period: period))
             default:
                 break
@@ -193,8 +199,8 @@ extension KLineView {
     }
     
     private func eraseMainIndicator(type: IndicatorType) {
+        mainRenderers.removeAll { $0.type == type }
         for key in type.keys {
-            mainRenderers.removeAll { $0.key == key }
             calculators.removeAll(where: { $0.key == key })
         }
         if let index =  mainIndicatorTypes.firstIndex(of: type) {
@@ -204,15 +210,21 @@ extension KLineView {
     }
     
     private func drawSubIndicator(type: IndicatorType) {
+        switch type {
+        case .vol:
+            let render = VOLRender()
+            subRenderers.append(AnyIndicatorRenderer(render))
+        case .rsi:
+            let render = RSIRenderer()
+            subRenderers.append(AnyIndicatorRenderer(render))
+        default:
+            break
+        }
         for key in type.keys {
             switch key {
             case .vol:
-                let render = VOLRender()
-                subRenderers.append(AnyIndicatorRenderer(render))
                 calculators.append(VOLCalculator())
             case .rsi(let period):
-                let render = RSIRenderer(period: period)
-                subRenderers.append(AnyIndicatorRenderer(render))
                 calculators.append(RSICalculator(period: period))
             default:
                 break
@@ -225,8 +237,8 @@ extension KLineView {
     }
     
     private func eraseSubIndicator(type: IndicatorType) {
+        subRenderers.removeAll { $0.type == type }
         for key in type.keys {
-            subRenderers.removeAll { $0.key == key }
             calculators.removeAll(where: { $0.key == key })
         }
         if let index =  subIndicatorTypes.firstIndex(of: type) {
@@ -263,8 +275,10 @@ extension KLineView {
         // 获取可见区域内数据的 metricBounds
         guard var mainBounds = visiableKLineItems.priceBounds else { return }
         mainRenderers.forEach { renderer in
-            if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: renderer.key) {
-                mainBounds.combine(other: indicatorMetricBounds)
+            renderer.type.keys.forEach { key in
+                if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: key) {
+                    mainBounds.combine(other: indicatorMetricBounds)
+                }
             }
         }
                 
@@ -289,8 +303,7 @@ extension KLineView {
                     itemWidth: itemWidth,
                     viewPort: candlestickRect
                 ),
-                candleStyle: styleManager.candleStyle,
-                chartStyle: nil
+                styleManager: styleManager
             )
         )
         
@@ -306,8 +319,7 @@ extension KLineView {
                         itemWidth: itemWidth,
                         viewPort: candlestickRect
                     ),
-                    candleStyle: styleManager.candleStyle,
-                    chartStyle: styleManager.style(for: renderer.key)
+                    styleManager: styleManager
                 )
             )
         }
@@ -324,8 +336,7 @@ extension KLineView {
                     itemWidth: itemWidth,
                     viewPort: timelineRect
                 ),
-                candleStyle: styleManager.candleStyle,
-                chartStyle: nil
+                styleManager: styleManager
             )
         )
         
@@ -338,8 +349,10 @@ extension KLineView {
                 height: indicatorHeight
             )
             var subBounds = MetricBounds(maximum: -Double.infinity, minimum: Double.infinity)
-            if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: renderer.key) {
-                subBounds.combine(other: indicatorMetricBounds)
+            renderer.type.keys.forEach { key in
+                if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: key) {
+                    subBounds.combine(other: indicatorMetricBounds)
+                }
             }
             renderer.draw(
                 in: subIndicatorView.layer,
@@ -351,8 +364,7 @@ extension KLineView {
                         itemWidth: itemWidth,
                         viewPort: subIndicatorRect
                     ),
-                    candleStyle: styleManager.candleStyle,
-                    chartStyle: styleManager.style(for: renderer.key)
+                    styleManager: styleManager
                 )
             )
         }

@@ -9,8 +9,7 @@ import UIKit
 
 struct RenderContext {
     let transformer: Transformer
-    let candleStyle: CandleStyle
-    let chartStyle: ChartStyle?
+    let styleManager: StyleManager
 }
 
 /// 定义绘制器协议 KLineRenderer，每种 Renderer 单独负责一种绘制任务，KLineView 通过聚合多个 Renderer 来实现多种绘制效果。
@@ -23,17 +22,17 @@ protocol ChartRenderer {
 
 protocol IndicatorRenderer: ChartRenderer {
     
-    var key: IndicatorKey { get }
+    var type: IndicatorType { get }
 }
 
 struct AnyIndicatorRenderer<T>: IndicatorRenderer {
     typealias Item = T
-    let key: IndicatorKey
+    let type: IndicatorType
     
     private let _draw: (CALayer, [T], Range<Int>, RenderContext) -> Void
     
     init<R: IndicatorRenderer>(_ renderer: R) where R.Item == T {
-        self.key = renderer.key
+        self.type = renderer.type
         self._draw = renderer.draw
     }
     
