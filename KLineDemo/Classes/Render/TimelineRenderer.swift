@@ -38,16 +38,16 @@ struct TimelineRenderer: ChartRenderer {
         for idx in (0..<labelCount) {
             
             let textLayer = CATextLayer()
-            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 9, nil)
+            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 10, nil)
             textLayer.fontSize = 10
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
             sublayer.addSublayer(textLayer)
             textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 10)
-            textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
+            textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY - 1)
             
-            let index = transformer.transformIndex(offset: textLayer.position.x)
+            let index = Int(ceil(textLayer.position.x / transformer.itemWidth))
 
             if index >= 0 && index < adjustedItems.count, let item = adjustedItems[index] {
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))

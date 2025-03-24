@@ -13,7 +13,7 @@ struct CandleRenderer: ChartRenderer {
     
     func draw(in layer: CALayer, items: [KLineItem], indices: Range<Int>, context: RenderContext) {
         let transformer = context.transformer
-        let rect = transformer.frame(in: .layer)
+        let rect = transformer.viewPort
         let candleStyle = context.candleStyle
         
         let sublayer = CALayer()

@@ -9,7 +9,7 @@ import Foundation
 
 /// 简单移动平均线 (SMA) 的计算器。
 struct MACalculator: IndicatorCalculator {
-    typealias Value = Double
+    typealias Value = Double?
     
     let period: Int       // 移动平均线的周期
     

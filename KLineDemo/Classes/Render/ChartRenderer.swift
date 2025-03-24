@@ -21,18 +21,18 @@ protocol ChartRenderer {
     func draw(in layer: CALayer, items: [Item], indices: Range<Int>, context: RenderContext)
 }
 
-protocol IndicatorRender: ChartRenderer {
+protocol IndicatorRenderer: ChartRenderer {
     
     var key: IndicatorKey { get }
 }
 
-struct AnyIndicatorRenderer<T>: IndicatorRender {
+struct AnyIndicatorRenderer<T>: IndicatorRenderer {
     typealias Item = T
     let key: IndicatorKey
     
     private let _draw: (CALayer, [T], Range<Int>, RenderContext) -> Void
     
-    init<R: IndicatorRender>(_ renderer: R) where R.Item == T {
+    init<R: IndicatorRenderer>(_ renderer: R) where R.Item == T {
         self.key = renderer.key
         self._draw = renderer.draw
     }

@@ -9,7 +9,7 @@ import Foundation
 
 /// 相对强弱指数 (RSI) 的计算器。
 struct RSICalculator: IndicatorCalculator {
-    typealias Value = Double
+    typealias Value = Double?
     
     let period: Int       // RSI 的周期
     

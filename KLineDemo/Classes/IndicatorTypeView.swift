@@ -10,34 +10,37 @@ import Combine
 
 final class IndicatorTypeView: UIView, UICollectionViewDelegate {
     
-    var drawMainIndicatorPublisher: AnyPublisher<IndicatorType, Never> {
-        drawPublisher
-            .filter { $0.0 == .mainChart }
-            .map { $0.1 }
-            .eraseToAnyPublisher()
+    private enum SectionItem: Hashable {
+        case main(IndicatorType)
+        case separator
+        case sub(IndicatorType)
+    }
+
+    var drawIndicatorPublisher: AnyPublisher<(KLineChartSection, IndicatorType), Never> {
+        drawPublisher.eraseToAnyPublisher()
     }
     
-    var eraseMainIndicatorPublisher: AnyPublisher<IndicatorType, Never> {
-        erasePublisher
-            .filter { $0.0 == .mainChart }
-            .map { $0.1 }
-            .eraseToAnyPublisher()
+    var eraseIndicatorPublisher: AnyPublisher<(KLineChartSection, IndicatorType), Never> {
+        erasePublisher.eraseToAnyPublisher()
     }
     
     let mainIndicators: [IndicatorType]
+    let subIndicators: [IndicatorType]
     private let drawPublisher = PassthroughSubject<(KLineChartSection, IndicatorType), Never>()
     private let erasePublisher = PassthroughSubject<(KLineChartSection, IndicatorType), Never>()
     private var collectionView: UICollectionView!
-    private var dataSource: UICollectionViewDiffableDataSource<Int, IndicatorType>!
+    private var dataSource: UICollectionViewDiffableDataSource<Int, SectionItem>!
     
-    required init(mainIndicators: [IndicatorType]) {
+    required init(mainIndicators: [IndicatorType], subIndicators: [IndicatorType]) {
         self.mainIndicators = mainIndicators
+        self.subIndicators = subIndicators
         super.init(frame: .zero)
         let layout = makeLayout()
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
         collectionView.allowsMultipleSelection = true
         collectionView.register(IndicatorCell.self, forCellWithReuseIdentifier: "cell")
+        collectionView.register(SeparatorCell.self, forCellWithReuseIdentifier: "separator")
         collectionView.delegate = self
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         setupIndicatorListDataSource()
@@ -50,49 +53,91 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
     }
 
     private func makeLayout() -> UICollectionViewLayout {
-        let itemSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-        let groupSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
-        let group: NSCollectionLayoutGroup = if #available(iOS 16, *) {
-            .horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 1)
-        } else {
-            .horizontal(layoutSize: groupSize, subitem: item, count: 1)
-        }
-        let section = NSCollectionLayoutSection(group: group)
-        //section.orthogonalScrollingBehavior = .continuous
-        section.interGroupSpacing = 16
-        section.contentInsets = .init(top: 0, leading: 12, bottom: 0, trailing: 12)
-        
         let config = UICollectionViewCompositionalLayoutConfiguration()
         config.scrollDirection = .horizontal
-        let layout = UICollectionViewCompositionalLayout(section: section, configuration: config)
-        return layout
+        return UICollectionViewCompositionalLayout(sectionProvider: { sectionIndex, _ in
+            if sectionIndex == 1 {
+                let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .fractionalHeight(1))
+                let item = NSCollectionLayoutItem(layoutSize: itemSize)
+                let groupSize = NSCollectionLayoutSize(widthDimension: .absolute(1), heightDimension: .fractionalHeight(1))
+                let group: NSCollectionLayoutGroup = .horizontal(layoutSize: groupSize, subitems: [item])
+                let section = NSCollectionLayoutSection(group: group)
+                return section
+            } else {
+                let itemSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
+                let item = NSCollectionLayoutItem(layoutSize: itemSize)
+                let groupSize = NSCollectionLayoutSize(widthDimension: .estimated(50), heightDimension: .fractionalHeight(1))
+                let group: NSCollectionLayoutGroup = if #available(iOS 16, *) {
+                    .horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 1)
+                } else {
+                    .horizontal(layoutSize: groupSize, subitem: item, count: 1)
+                }
+                let section = NSCollectionLayoutSection(group: group)
+                //section.orthogonalScrollingBehavior = .continuous
+                section.interGroupSpacing = 20
+                section.contentInsets = .init(top: 0, leading: 16, bottom: 0, trailing: 16)
+                return section
+            }
+        }, configuration: config)
     }
     
     private func setupIndicatorListDataSource() {
         dataSource = .init(collectionView: collectionView, cellProvider: { collectionView, indexPath, itemIdentifier in
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! IndicatorCell
-            cell.label.text = itemIdentifier.rawValue
-            return cell
+            switch itemIdentifier {
+            case let .main(type), let .sub(type):
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! IndicatorCell
+                cell.label.text = type.rawValue
+                return cell
+            case .separator:
+                return collectionView.dequeueReusableCell(withReuseIdentifier: "separator", for: indexPath)
+            }
         })
         
         // 配置主图指标
-        var snapshot = NSDiffableDataSourceSnapshot<Int, IndicatorType>()
+        var snapshot = NSDiffableDataSourceSnapshot<Int, SectionItem>()
         snapshot.appendSections([0])
-        snapshot.appendItems(mainIndicators)
+        snapshot.appendItems(mainIndicators.map({ .main($0) }), toSection: 0)
+        dataSource.apply(snapshot)
+        
+        // 分割线
+        snapshot.appendSections([1])
+        snapshot.appendItems([.separator], toSection: 1)
+        dataSource.apply(snapshot)
+        
+        // 配置副图指标
+        snapshot.appendSections([2])
+        snapshot.appendItems(subIndicators.map({ .sub($0) }), toSection: 2)
         dataSource.apply(snapshot)
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let snapshot = dataSource.snapshot()
-        let type = snapshot.itemIdentifiers[indexPath.item]
-        drawPublisher.send((.mainChart, type))
+        let type = snapshot.itemIdentifiers(inSection: indexPath.section)[indexPath.item]
+        switch type {
+        case let .main(type): drawPublisher.send((.mainChart, type))
+        case let .sub(type): drawPublisher.send((.subChart, type))
+        default: break
+        }
+        
     }
     
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
         let snapshot = dataSource.snapshot()
+        let type = snapshot.itemIdentifiers(inSection: indexPath.section)[indexPath.item]
+        switch type {
+        case let .main(type): erasePublisher.send((.mainChart, type))
+        case let .sub(type): erasePublisher.send((.subChart, type))
+        default: break
+        }
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
+        let snapshot = dataSource.snapshot()
         let type = snapshot.itemIdentifiers[indexPath.item]
-        erasePublisher.send((.mainChart, type))
+        if case .separator = type {
+            return false
+        }
+        return true
     }
 }
 
@@ -102,7 +147,7 @@ private class IndicatorCell: UICollectionViewCell {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        label.font = .systemFont(ofSize: 13)
+        label.font = .systemFont(ofSize: 12)
         label.textColor = .systemGray2
         label.textAlignment = .center
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -121,5 +166,25 @@ private class IndicatorCell: UICollectionViewCell {
         didSet {
             label.textColor = isSelected ? .label : .systemGray2
         }
+    }
+}
+
+private class SeparatorCell: UICollectionViewCell {
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        let line = UIView()
+        line.backgroundColor = .separator
+        contentView.addSubview(line)
+        line.snp.makeConstraints { make in
+            make.width.equalTo(1)
+            make.height.equalTo(11)
+            make.center.equalToSuperview()
+        }
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }

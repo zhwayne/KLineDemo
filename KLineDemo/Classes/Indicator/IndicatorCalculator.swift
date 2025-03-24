@@ -18,7 +18,7 @@ protocol IndicatorCalculator {
     ///
     /// - Parameter items: 数据项数组。
     /// - Returns: 指标值数组，若某个数据点无法计算则为 `nil`。
-    func calculate(for items: [KLineItem]) async throws -> [Value?]
+    func calculate(for items: [KLineItem]) async throws -> [Value]
 }
 
 /// 枚举，表示指标计算过程中可能出现的错误。

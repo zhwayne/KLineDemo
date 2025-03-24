@@ -22,7 +22,7 @@ class ViewController: UIViewController {
 
         chartView.snp.makeConstraints { make in
             make.left.right.equalTo(view.safeAreaLayoutGuide)
-            make.centerY.equalToSuperview()
+            make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(64)
         }
 //        
 //        let config = WebSocketClient.Configuration(url: URL(string: "wss://npush.bibox360.com")!)

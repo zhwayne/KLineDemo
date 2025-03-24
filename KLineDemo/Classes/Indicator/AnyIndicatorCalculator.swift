@@ -12,7 +12,7 @@ struct AnyIndicatorCalculator: IndicatorCalculator {
     typealias Value = Any
     
     private let _key: IndicatorKey
-    private let _calcFunc: ([KLineItem]) async throws -> [Any?]
+    private let _calcFunc: ([KLineItem]) async throws -> [Any]
     
     /// 初始化方法，接受任何符合 `IndicatorCalculator` 协议的计算器。
     ///
@@ -30,7 +30,7 @@ struct AnyIndicatorCalculator: IndicatorCalculator {
     }
     
     /// 计算指标值，返回 `[Any?]`。
-    func calculate(for items: [KLineItem]) async throws -> [Any?] {
+    func calculate(for items: [KLineItem]) async throws -> [Any] {
         return try await _calcFunc(items)
     }
 }

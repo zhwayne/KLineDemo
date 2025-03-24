@@ -16,7 +16,7 @@ extension Collection where Element == KLineItem {
         var decoratedItems = self.map { IndicatorData(item: $0) }
         
         // 使用抛出任务组进行并发计算
-        try await withThrowingTaskGroup(of: (IndicatorKey, [Any?]).self) { group in
+        try await withThrowingTaskGroup(of: (IndicatorKey, [Any]).self) { group in
             for calculator in calculators {
                 group.addTask {
                     let values = try await calculator.calculate(for: Array(self))
@@ -43,7 +43,15 @@ extension Collection where Element == IndicatorData {
     func bounds(for key: IndicatorKey) -> MetricBounds? {
         // 提取特定指标的所有非 nil 值，并尝试转换为 Double
         let indicatorValues: [Double] = self.compactMap { data in
-            data.getIndicator(forKey: key)
+            if let value = data.getIndicator(forKey: key) {
+                if let value = value as? Double {
+                    return value
+                } else if let value = value as? Int {
+                    return Double(value)
+                }
+                return nil
+            }
+            return nil
         }
         
         // 如果没有有效的数据，返回 nil
@@ -57,22 +65,11 @@ extension Collection where Element == IndicatorData {
     }
 }
 
-extension Collection where Element == IndicatorData {
-    
-    /// 获取特定类型的指标值数组。
-    func indicatorValues<T>(for key: IndicatorKey) -> [T?] {
-        let result: [T?] = map { data in
-            data.getIndicator(forKey: key)
-        }
-        return result
-    }
-}
-
 
 extension Collection where Element == KLineItem {
     
     /// 计算数组中的价格范围（最大值和最小值）。
-    var bounds: MetricBounds? {
+    var priceBounds: MetricBounds? {
         guard !isEmpty else { return nil }
         
         let minPrice = self.map { Swift.min($0.opening, $0.closing, $0.highest, $0.lowest) }.min() ?? 0

@@ -17,7 +17,7 @@ struct IndicatorData {
     /// - Parameters:
     ///   - value: 指标值。
     ///   - key: 指标键。
-    mutating func setIndicator<T>(value: T?, forKey key: IndicatorKey) {
+    mutating func setIndicator(value: Any?, forKey key: IndicatorKey) {
         indicators[key] = value
     }
     
@@ -27,8 +27,8 @@ struct IndicatorData {
     ///   - key: 指标键。
     ///   - type: 指标值的类型。
     /// - Returns: 指标值，若不存在或类型不匹配则返回 `nil`。
-    func getIndicator<T>(forKey key: IndicatorKey) -> T? {
-        return indicators[key] as? T
+    func getIndicator(forKey key: IndicatorKey) -> Any? {
+        return indicators[key]
     }
     
     init(item: KLineItem) {

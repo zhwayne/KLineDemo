@@ -7,7 +7,7 @@
 
 import UIKit
 
-struct RSIRenderer: IndicatorRender {
+struct RSIRenderer: IndicatorRenderer {
     
     typealias Item = IndicatorData
     
@@ -21,7 +21,7 @@ struct RSIRenderer: IndicatorRender {
     
     func draw(in layer: CALayer, items: [IndicatorData], indices: Range<Int>, context: RenderContext) {
         let transformer = context.transformer
-        let rect = transformer.frame(in: .layer)
+        let rect = transformer.viewPort
         let chartStyle = context.chartStyle
         let candleStyle = context.candleStyle
         
@@ -35,7 +35,7 @@ struct RSIRenderer: IndicatorRender {
         let path = UIBezierPath()
         
         for (idx, item) in items.enumerated() {
-            guard let value: Double = item.getIndicator(forKey: key) else {
+            guard let value = item.getIndicator(forKey: key) as? Double else {
                 continue
             }
             // 计算 x 坐标

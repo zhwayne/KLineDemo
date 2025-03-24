@@ -18,8 +18,8 @@ struct ChartStyle {
 struct CandleStyle {
     var upColor: UIColor = .systemPink
     var downColor: UIColor = .systemTeal
-    var lineWidth: CGFloat = 10
-    var gap: CGFloat { 1 }
+    var lineWidth: CGFloat = 16
+    var gap: CGFloat { 4 }
         
     init() { }
 }

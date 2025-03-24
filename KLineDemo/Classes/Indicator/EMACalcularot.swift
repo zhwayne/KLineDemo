@@ -9,7 +9,7 @@ import Foundation
 
 /// 指数移动平均线 (EMA) 的计算器。
 struct EMACalculator: IndicatorCalculator {
-    typealias Value = Double
+    typealias Value = Double?
     
     let period: Int       // 移动平均线的周期
     
