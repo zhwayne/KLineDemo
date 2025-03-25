@@ -17,7 +17,7 @@ enum KLineChartSection: Sendable {
 
     private let chartView = UIView()
     private let scrollView: HorizontalScrollView
-    private let candlestickView = UIView()
+    private let candleView = UIView()
     private let timelineView = UIView()
     private let legendLabel = UILabel()
     private let indicatorTypeView: IndicatorTypeView
@@ -29,6 +29,7 @@ enum KLineChartSection: Sendable {
     private let indicatorHeight: CGFloat = 64
     private var chartHeightConstraint: Constraint!
     
+    private let backgroundRender = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
     private var mainRenderers: [AnyIndicatorRenderer<IndicatorData>] = []
@@ -55,7 +56,7 @@ enum KLineChartSection: Sendable {
         super.init(frame: .zero)
         scrollView.delegate = self
         
-        candlestickView.layer.masksToBounds = true
+        candleView.layer.masksToBounds = true
         timelineView.layer.masksToBounds = true
         subIndicatorView.layer.masksToBounds = true
         
@@ -77,8 +78,8 @@ enum KLineChartSection: Sendable {
             make.edges.equalToSuperview()
         }
         
-        scrollView.contentView.addSubview(candlestickView)
-        candlestickView.snp.makeConstraints { make in
+        scrollView.contentView.addSubview(candleView)
+        candleView.snp.makeConstraints { make in
             make.top.left.width.equalToSuperview()
             make.height.equalTo(candleHeight)
         }
@@ -86,7 +87,7 @@ enum KLineChartSection: Sendable {
         scrollView.contentView.addSubview(timelineView)
         timelineView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(candlestickView.snp.bottom)
+            make.top.equalTo(candleView.snp.bottom)
             make.height.equalTo(timelineHeight)
         }
         
@@ -265,7 +266,7 @@ extension KLineView {
     }
     
     private func drawVisiableItems(in rect: CGRect) {
-        candlestickView.layer.sublayers = nil
+        candleView.layer.sublayers = nil
         timelineView.layer.sublayers = nil
         subIndicatorView.layer.sublayers = nil
         
@@ -292,9 +293,24 @@ extension KLineView {
         let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candleHeight - offsetY)
         
+        // 背景
+        backgroundRender.draw(
+            in: candleView.layer,
+            context: RenderContext(
+                transformer: ChartTransformer(
+                    dataBounds: mainBounds,
+                    itemWidth: itemWidth,
+                    viewPort: rect
+                ),
+                items: visiableKLineItems,
+                indices: scrollView.indices,
+                styleManager: styleManager
+            )
+        )
+        
         // 主图部分
         candleRenderer.draw(
-            in: candlestickView.layer,
+            in: candleView.layer,
             context: RenderContext(
                 transformer: ChartTransformer(
                     dataBounds: mainBounds,
@@ -310,7 +326,7 @@ extension KLineView {
         // 主图指标部分
         mainRenderers.forEach { renderer in
             renderer.draw(
-                in: candlestickView.layer,
+                in: candleView.layer,
                 context: RenderContext(
                     transformer: ChartTransformer(
                         dataBounds: mainBounds,

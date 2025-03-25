@@ -22,6 +22,18 @@ struct CandleRenderer: ChartRenderer {
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         
+        let lineHeight = 1 / UIScreen.main.scale
+        let topLinePath = UIBezierPath()
+        topLinePath.move(to: CGPoint(x: 0, y: lineHeight))
+        topLinePath.addLine(to: CGPoint(x: layer.bounds.maxX, y: lineHeight))
+        
+        let topLineLayer = CAShapeLayer()
+        topLineLayer.path = topLinePath.cgPath
+        topLineLayer.lineWidth = lineHeight
+        topLineLayer.fillColor = UIColor.clear.cgColor
+        topLineLayer.strokeColor = UIColor.separator.cgColor
+        layer.addSublayer(topLineLayer)
+        
         let verticalInset = VerticalInset(top: 8, bottom: 8)
         
         for (idx, item) in items.enumerated() {

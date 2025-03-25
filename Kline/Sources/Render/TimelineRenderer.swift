@@ -40,7 +40,7 @@ struct TimelineRenderer: ChartRenderer {
         for idx in (0..<labelCount) {
             
             let textLayer = CATextLayer()
-            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 10, nil)
+            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 11, nil)
             textLayer.fontSize = 11
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
@@ -61,27 +61,18 @@ struct TimelineRenderer: ChartRenderer {
         }
         
         let lineHeight = 1 / UIScreen.main.scale
-        let topLinePath = UIBezierPath()
-        topLinePath.move(to: CGPoint(x: 0, y: lineHeight))
-        topLinePath.addLine(to: CGPoint(x: rect.maxX, y: lineHeight))
+        let linePath = UIBezierPath()
+        linePath.move(to: CGPoint(x: 0, y: lineHeight))
+        linePath.addLine(to: CGPoint(x: rect.maxX, y: lineHeight))
+        linePath.move(to: CGPoint(x: 0, y: rect.height - lineHeight))
+        linePath.addLine(to: CGPoint(x: rect.maxX, y: rect.height - lineHeight))
         
-        let topLineLayer = CAShapeLayer()
-        topLineLayer.path = topLinePath.cgPath
-        topLineLayer.lineWidth = lineHeight
-        topLineLayer.fillColor = UIColor.clear.cgColor
-        topLineLayer.strokeColor = UIColor.separator.cgColor
-        sublayer.addSublayer(topLineLayer)
-        
-        let bottomLinePath = UIBezierPath()
-        bottomLinePath.move(to: CGPoint(x: 0, y: rect.height - lineHeight))
-        bottomLinePath.addLine(to: CGPoint(x: rect.maxX, y: rect.height - lineHeight))
-        
-        let bottomLineLayer = CAShapeLayer()
-        bottomLineLayer.path = bottomLinePath.cgPath
-        bottomLineLayer.lineWidth = lineHeight
-        bottomLineLayer.fillColor = UIColor.clear.cgColor
-        bottomLineLayer.strokeColor = UIColor.separator.cgColor
-        sublayer.addSublayer(bottomLineLayer)
+        let lineLayer = CAShapeLayer()
+        lineLayer.path = linePath.cgPath
+        lineLayer.lineWidth = lineHeight
+        lineLayer.fillColor = UIColor.clear.cgColor
+        lineLayer.strokeColor = UIColor.separator.cgColor
+        sublayer.addSublayer(lineLayer)
         
         layer.addSublayer(sublayer)
     }

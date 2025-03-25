@@ -17,6 +17,8 @@ struct VerticalInset {
 
 protocol Transformer {
     
+    var dataBounds: MetricBounds { get }
+    
     var itemWidth: CGFloat { get }
     
     var viewPort: CGRect { get }
@@ -35,7 +37,7 @@ extension Transformer {
 
 struct ChartTransformer: Transformer {
 
-    private let dataBounds: MetricBounds
+    let dataBounds: MetricBounds
     let itemWidth: CGFloat
     let viewPort: CGRect
     
