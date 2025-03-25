@@ -9,10 +9,12 @@
 /* Begin PBXBuildFile section */
 		0BB9A3582CD35F8B0076CCF8 /* SnapKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0BB9A3572CD35F8B0076CCF8 /* SnapKit */; };
 		0BB9A35D2CD363070076CCF8 /* SwiftyJSON in Frameworks */ = {isa = PBXBuildFile; productRef = 0BB9A35C2CD363070076CCF8 /* SwiftyJSON */; };
+		9649159C2D9274D2008D4E5A /* KLine in Frameworks */ = {isa = PBXBuildFile; productRef = 9649159B2D9274D2008D4E5A /* KLine */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0BB9A3332CD353E10076CCF8 /* KLineDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KLineDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9649159A2D9274C9008D4E5A /* KLine */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = KLine; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -41,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9649159C2D9274D2008D4E5A /* KLine in Frameworks */,
 				0BB9A35D2CD363070076CCF8 /* SwiftyJSON in Frameworks */,
 				0BB9A3582CD35F8B0076CCF8 /* SnapKit in Frameworks */,
 			);
@@ -52,7 +55,9 @@
 		0BB9A32A2CD353E10076CCF8 = {
 			isa = PBXGroup;
 			children = (
+				9649159A2D9274C9008D4E5A /* KLine */,
 				0BB9A3352CD353E10076CCF8 /* KLineDemo */,
+				964915972D9267EF008D4E5A /* Frameworks */,
 				0BB9A3342CD353E10076CCF8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -63,6 +68,13 @@
 				0BB9A3332CD353E10076CCF8 /* KLineDemo.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		964915972D9267EF008D4E5A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -87,6 +99,7 @@
 			packageProductDependencies = (
 				0BB9A3572CD35F8B0076CCF8 /* SnapKit */,
 				0BB9A35C2CD363070076CCF8 /* SwiftyJSON */,
+				9649159B2D9274D2008D4E5A /* KLine */,
 			);
 			productName = KLineDemo;
 			productReference = 0BB9A3332CD353E10076CCF8 /* KLineDemo.app */;
@@ -380,6 +393,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0BB9A35B2CD363070076CCF8 /* XCRemoteSwiftPackageReference "SwiftyJSON" */;
 			productName = SwiftyJSON;
+		};
+		9649159B2D9274D2008D4E5A /* KLine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KLine;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

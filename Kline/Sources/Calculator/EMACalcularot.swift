@@ -9,7 +9,7 @@ import Foundation
 
 /// 指数移动平均线 (EMA) 的计算器。
 struct EMACalculator: IndicatorCalculator {
-    typealias Value = Double?
+    typealias Value = Double
     
     let period: Int       // 移动平均线的周期
     
@@ -17,14 +17,11 @@ struct EMACalculator: IndicatorCalculator {
         return .ema(period: period)
     }
     
-    func calculate(for items: [KLineItem]) async throws -> [Double?] {
-        guard period > 0 else {
-            throw IndicatorCalculationError.invalidData(reason: "周期必须大于 0。")
+    func calculate(for items: [KLineItem]) -> [Double?] {
+        guard period > 0 && items.count >= period else {
+            return []
         }
-        guard items.count >= period else {
-            throw IndicatorCalculationError.insufficientData(period: period)
-        }
-        
+
         var emaValues: [Double?] = Array(repeating: nil, count: items.count)
         
         // 计算平滑系数 α

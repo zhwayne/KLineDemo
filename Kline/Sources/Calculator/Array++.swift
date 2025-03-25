@@ -7,31 +7,42 @@
 
 import Foundation
 
-extension Collection where Element == KLineItem {
+extension Array where Element == KLineItem {
     /// 使用提供的计算器数组计算指标，并将结果装饰到数据中。
     ///
     /// - Parameter calculators: 用于计算指标的 `IndicatorCalculator` 数组。
     /// - Returns: 包含原始 `KLineItem` 和关联指标的 `IndicatorData` 数组。
     func decorateWithIndicators(calculators: [any IndicatorCalculator]) async throws -> [IndicatorData] {
-        var decoratedItems = self.map { IndicatorData(item: $0) }
+        let decoratedItemsActor = DecoratedItemsActor(items: self.map { IndicatorData(item: $0) })
         
-        // 使用抛出任务组进行并发计算
-        try await withThrowingTaskGroup(of: (IndicatorKey, [Any]).self) { group in
+        try await withThrowingTaskGroup(of: Void.self) { group in
             for calculator in calculators {
                 group.addTask {
-                    let values = try await calculator.calculate(for: Array(self))
-                    return (calculator.key, values)
+                    let values = calculator.calculate(for: self)
+                    await decoratedItemsActor.update(key: calculator.key, values: values)
                 }
             }
-            
-            for try await (key, values) in group {
-                for i in 0..<decoratedItems.count {
-                    decoratedItems[i].setIndicator(value: values[i], forKey: key)
-                }
-            }
+            try await group.waitForAll()
         }
         
-        return decoratedItems
+        return await decoratedItemsActor.items
+    }
+}
+
+private actor DecoratedItemsActor {
+    var items: [IndicatorData]
+    
+    init(items: [IndicatorData]) {
+        self.items = items
+    }
+    
+    func update(key: IndicatorKey, values: [IndicatorValue?]) {
+        
+        for i in 0..<items.count {
+            if let value = values[i] {
+                items[i].setIndicator(value: value, forKey: key)
+            }
+        }
     }
 }
 

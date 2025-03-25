@@ -9,7 +9,7 @@ import Foundation
 
 /// 简单移动平均线 (SMA) 的计算器。
 struct MACalculator: IndicatorCalculator {
-    typealias Value = Double?
+    typealias Value = Double
     
     let period: Int       // 移动平均线的周期
     
@@ -17,12 +17,9 @@ struct MACalculator: IndicatorCalculator {
         return .ma(period: period)
     }
     
-    func calculate(for items: [KLineItem]) async throws -> [Double?] {
-        guard period > 0 else {
-            throw IndicatorCalculationError.invalidData(reason: "周期必须大于 0。")
-        }
-        guard items.count >= period else {
-            throw IndicatorCalculationError.insufficientData(period: period)
+    func calculate(for items: [KLineItem]) -> [Double?] {
+        guard period > 0 && items.count >= period else {
+            return []
         }
         
         var result = [Double?](repeating: nil, count: items.count)

@@ -179,7 +179,7 @@ private extension WebSocketClient {
             while !Task.isCancelled {
                 try? await sendPing()
                 let timeInterval = TimeInterval(1_000_000_000) * config.pingInterval
-                try? await Task.sleep(nanoseconds: UInt64(1_000_000_000))
+                try? await Task.sleep(nanoseconds: UInt64(timeInterval))
             }
         }
         

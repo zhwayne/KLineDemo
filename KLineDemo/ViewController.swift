@@ -7,13 +7,13 @@
 
 import UIKit
 import SwiftyJSON
+import SnapKit
+import KLine
 
 class ViewController: UIViewController {
     
     private let chartView = KLineView()
-    
-    private var client: WebSocketClient!
-    
+        
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.

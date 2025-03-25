@@ -13,7 +13,7 @@ enum KLineChartSection: Sendable {
     case mainChart, subChart
 }
 
-@MainActor class KLineView: UIView {
+@MainActor public final class KLineView: UIView {
 
     private let chartView = UIView()
     private let scrollView: HorizontalScrollView
@@ -44,7 +44,7 @@ enum KLineChartSection: Sendable {
     
     private var disposeBag = Set<AnyCancellable>()
     
-    required init(styleManager: StyleManager = .shared) {
+    public required init(styleManager: StyleManager = .shared) {
         self.styleManager = styleManager
         scrollView = HorizontalScrollView(styleManager: styleManager)
         indicatorTypeView = IndicatorTypeView(
@@ -108,7 +108,7 @@ enum KLineChartSection: Sendable {
         setupBindings()
     }
     
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
@@ -118,7 +118,7 @@ enum KLineChartSection: Sendable {
         return candleHeight + timelineHeight + subIndicatorCount * indicatorHeight
     }
     
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         drawVisiableItems()
     }
@@ -154,7 +154,7 @@ enum KLineChartSection: Sendable {
 
 extension KLineView {
     
-    func reloadData(items: [KLineItem], scrollPosition: ScrollPosition) {
+    public func reloadData(items: [KLineItem], scrollPosition: ScrollPosition) {
         Task {
             do {
                 kLineItems = items
@@ -411,7 +411,7 @@ extension KLineView {
 
 extension KLineView: UIScrollViewDelegate {
     
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
             drawVisiableItems()
         }

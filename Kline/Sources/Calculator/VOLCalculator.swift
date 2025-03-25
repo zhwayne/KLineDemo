@@ -13,7 +13,7 @@ struct VOLCalculator: IndicatorCalculator {
     
     var key: IndicatorKey { .vol }
     
-    func calculate(for items: [KLineItem]) async throws -> [Int] {
+    func calculate(for items: [KLineItem]) -> [Int?] {
         return items.map(\.volume)
     }
 }

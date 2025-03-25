@@ -8,7 +8,7 @@
 import Foundation
 import UIKit
 
-enum ScrollPosition {
+public enum ScrollPosition {
     case top, end, current
 }
 

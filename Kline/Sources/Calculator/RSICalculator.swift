@@ -9,7 +9,7 @@ import Foundation
 
 /// 相对强弱指数 (RSI) 的计算器。
 struct RSICalculator: IndicatorCalculator {
-    typealias Value = Double?
+    typealias Value = Double
     
     let period: Int       // RSI 的周期
     
@@ -17,12 +17,9 @@ struct RSICalculator: IndicatorCalculator {
         return .rsi(period: period)
     }
     
-    func calculate(for items: [KLineItem]) async throws -> [Double?] {
-        guard period > 0 else {
-            throw IndicatorCalculationError.invalidData(reason: "周期必须大于 0。")
-        }
-        guard items.count > period else {
-            throw IndicatorCalculationError.insufficientData(period: period)
+    func calculate(for items: [KLineItem]) -> [Double?] {
+        guard period > 0 && items.count >= period else {
+            return []
         }
         
         // RSI 结果数组，前 `period` 天没有足够数据，RSI 值为 nil

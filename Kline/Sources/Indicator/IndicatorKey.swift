@@ -8,14 +8,14 @@
 import Foundation
 
 /// 枚举，表示不同类型的指标及其相关参数。
-enum IndicatorKey: Hashable, CustomStringConvertible {
+public enum IndicatorKey: Hashable, CustomStringConvertible, Sendable {
     case vol    // 成交量
     case ma(period: Int)                          // 移动平均线
     case ema(period: Int)
     case rsi(period: Int)                         // 相对强弱指数
     case macd(shortPeriod: Int, longPeriod: Int, signalPeriod: Int) // 移动平均线收敛/散度
     
-    var description: String {
+    public var description: String {
         switch self {
         case .vol:
             return "VOL"
@@ -31,14 +31,14 @@ enum IndicatorKey: Hashable, CustomStringConvertible {
     }
 }
 
-enum IndicatorType: String, CaseIterable {
+public enum IndicatorType: String, CaseIterable, Sendable {
     case vol = "VOL"
     case ma = "MA"
     case ema = "EMA"
     case rsi = "RSI"
     case macd = "MACD"
     
-    var keys: [IndicatorKey] {
+    public var keys: [IndicatorKey] {
         switch self {
         case .vol:  return [.vol]
         case .ma:   return [5, 20, 30, 60, 120].map { .ma(period: $0) }
