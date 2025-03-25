@@ -13,29 +13,31 @@ struct RSIRenderer: IndicatorRenderer {
         
     var type: IndicatorType { .rsi }
     
-    func draw(in layer: CALayer, items: [IndicatorData], indices: Range<Int>, context: RenderContext) {
+    func draw(in layer: CALayer, context: RenderContext<IndicatorData>) {
         let transformer = context.transformer
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
+        let items = context.items
         
         for key in type.keys {
-            let chartStyle = context.styleManager.style(for: key)
+            let indicatorStyle = context.styleManager.indicatorStyle(for: key)
             let sublayer = CAShapeLayer()
             sublayer.frame = rect
             sublayer.contentsScale = UIScreen.main.scale
-            sublayer.lineWidth = 1
-            sublayer.fillColor = chartStyle?.fillColor?.cgColor
-            sublayer.strokeColor = chartStyle?.lineColor.cgColor
+            sublayer.lineWidth = indicatorStyle?.lineWidth ?? 1
+            sublayer.fillColor = indicatorStyle?.fillColor?.cgColor
+            sublayer.strokeColor = indicatorStyle?.lineColor.cgColor
             
             let path = UIBezierPath()
+            let verticalInset = VerticalInset(top: 2, bottom: 2)
             
             for (idx, item) in items.enumerated() {
                 guard let value = item.getIndicator(forKey: key) as? Double else {
                     continue
                 }
                 // 计算 x 坐标
-                let x = transformer.transformX(at: idx) + candleStyle.lineWidth * 0.5
-                let y = transformer.transformY(value: value)
+                let x = transformer.transformX(at: idx) + candleStyle.width * 0.5
+                let y = transformer.transformY(value: value, inset: verticalInset)
                 let centerX = x
                 let point = CGPoint(x: centerX, y: y)
                 
@@ -50,6 +52,18 @@ struct RSIRenderer: IndicatorRenderer {
             sublayer.path = path.cgPath
             layer.addSublayer(sublayer)
         }
+        
+        let lineHeight = 1 / UIScreen.main.scale
+        let bottomLinePath = UIBezierPath()
+        bottomLinePath.move(to: CGPoint(x: 0, y: rect.maxY - lineHeight))
+        bottomLinePath.addLine(to: CGPoint(x: layer.bounds.maxX, y: rect.maxY - lineHeight))
+        
+        let bottomLineLayer = CAShapeLayer()
+        bottomLineLayer.path = bottomLinePath.cgPath
+        bottomLineLayer.lineWidth = lineHeight
+        bottomLineLayer.fillColor = UIColor.clear.cgColor
+        bottomLineLayer.strokeColor = UIColor.separator.cgColor
+        layer.addSublayer(bottomLineLayer)
     }
 }
 

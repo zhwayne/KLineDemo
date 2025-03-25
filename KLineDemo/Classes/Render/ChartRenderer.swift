@@ -7,8 +7,10 @@
 
 import UIKit
 
-struct RenderContext {
+struct RenderContext<T> {
     let transformer: Transformer
+    let items: [T]
+    let indices: Range<Int>
     let styleManager: StyleManager
 }
 
@@ -16,8 +18,8 @@ struct RenderContext {
 protocol ChartRenderer {
     
     associatedtype Item
-        
-    func draw(in layer: CALayer, items: [Item], indices: Range<Int>, context: RenderContext)
+    
+    func draw(in layer: CALayer, context: RenderContext<Item>)
 }
 
 protocol IndicatorRenderer: ChartRenderer {
@@ -29,14 +31,14 @@ struct AnyIndicatorRenderer<T>: IndicatorRenderer {
     typealias Item = T
     let type: IndicatorType
     
-    private let _draw: (CALayer, [T], Range<Int>, RenderContext) -> Void
+    private let _draw: (CALayer, RenderContext<T>) -> Void
     
     init<R: IndicatorRenderer>(_ renderer: R) where R.Item == T {
         self.type = renderer.type
         self._draw = renderer.draw
     }
     
-    func draw(in layer: CALayer, items: [T], indices: Range<Int>, context: RenderContext) {
-        _draw(layer, items, indices, context)
+    func draw(in layer: CALayer, context: RenderContext<T>) {
+        _draw(layer, context)
     }
 }

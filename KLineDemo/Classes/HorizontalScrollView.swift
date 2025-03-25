@@ -78,10 +78,10 @@ final class HorizontalScrollView: UIScrollView {
         
         let difValue = pinch.scale - oldScale
         
-        let newLineWidth = candleStyle.lineWidth * (difValue + 1)
+        let newLineWidth = candleStyle.width * (difValue + 1)
         guard (1...40).contains(newLineWidth) else { return }
         
-        styleManager.candleStyle.lineWidth = newLineWidth
+        styleManager.candleStyle.width = newLineWidth
         oldScale = pinch.scale
         
         // 更新 contentSize
@@ -112,7 +112,7 @@ final class HorizontalScrollView: UIScrollView {
     
     private func updateScrollViewContentSize() {
         let count = CGFloat(klineItemCount)
-        let itemWidth = candleStyle.lineWidth + candleStyle.gap
+        let itemWidth = candleStyle.width + candleStyle.gap
         let contentWidth = count * itemWidth - candleStyle.gap
         let width = max(contentWidth, bounds.width)
         let height = bounds.height
@@ -123,7 +123,7 @@ final class HorizontalScrollView: UIScrollView {
 extension HorizontalScrollView {
     
     var indices: Range<Int> {
-        let itemWidth = candleStyle.lineWidth + candleStyle.gap
+        let itemWidth = candleStyle.width + candleStyle.gap
         let visiableWidth = frame.width + itemWidth
         let itemCountToBeDrawn = Int(ceil(visiableWidth / itemWidth))
         let startIndex = Int(floor(contentOffset.x / itemWidth))
@@ -136,26 +136,28 @@ extension HorizontalScrollView {
         let lowerBound = min(max(range.lowerBound, 0), klineItemCount)
         let upperBound = max(min(range.upperBound, klineItemCount), 0)
         return lowerBound..<upperBound
-//        let itemWidth = candleStyle.lineWidth + candleStyle.gap
-//        var visiableWidth = if contentOffset.x < 0 {
-//            max(frame.width + contentOffset.x, 0)
-//        } else if contentOffset.x > contentSize.width - bounds.width {
-//            max(contentSize.width - contentOffset.x, 0)
-//        } else {
-//            frame.width
-//        }
-//        visiableWidth += itemWidth
-//        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)), 0)
-//        let startIndex = max(Int(floor(contentOffset.x / itemWidth)), 0)
-//        guard startIndex < klineItemCount else { return 0..<0 }
-//        return startIndex..<min(startIndex + itemCountToBeDrawn, klineItemCount)
+        /*
+        let itemWidth = candleStyle.width + candleStyle.gap
+        var visiableWidth = if contentOffset.x < 0 {
+            max(frame.width + contentOffset.x, 0)
+        } else if contentOffset.x > contentSize.width - bounds.width {
+            max(contentSize.width - contentOffset.x, 0)
+        } else {
+            frame.width
+        }
+        visiableWidth += itemWidth
+        let itemCountToBeDrawn = max(Int(ceil(visiableWidth / itemWidth)), 0)
+        let startIndex = max(Int(floor(contentOffset.x / itemWidth)), 0)
+        guard startIndex < klineItemCount else { return 0..<0 }
+        return startIndex..<min(startIndex + itemCountToBeDrawn, klineItemCount)
+         */
     }
     
     var visiableRect: CGRect {
         guard !visiableRange.isEmpty else { return .zero }
         let lowerBound = CGFloat(visiableRange.lowerBound)
         let upperBound = CGFloat(visiableRange.upperBound)
-        let itemWidth = candleStyle.lineWidth + candleStyle.gap
+        let itemWidth = candleStyle.width + candleStyle.gap
         let offset = lowerBound * (itemWidth) - contentOffset.x
         let width = (upperBound - lowerBound) * itemWidth
         let height = contentView.bounds.height

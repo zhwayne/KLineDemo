@@ -10,11 +10,13 @@ import UIKit
 struct CandleRenderer: ChartRenderer {
     
     typealias Item = KLineItem
+    typealias Style = CandleStyle
     
-    func draw(in layer: CALayer, items: [KLineItem], indices: Range<Int>, context: RenderContext) {
+    func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
         let transformer = context.transformer
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
+        let items = context.items
         
         let sublayer = CALayer()
         sublayer.frame = rect
@@ -30,14 +32,14 @@ struct CandleRenderer: ChartRenderer {
             let y = min(openY, closeY)
             let h = abs(openY - closeY)
             
-            let rect = CGRect(x: x, y: y, width: candleStyle.lineWidth, height: h)
+            let rect = CGRect(x: x, y: y, width: candleStyle.width, height: h)
             let path = UIBezierPath(rect: rect)
             
             // 计算最高价和最低价的 y 坐标
             let highY = transformer.transformY(value: item.highest)
             let lowY = transformer.transformY(value: item.lowest)
             
-            let centerX = candleStyle.lineWidth / 2 + x
+            let centerX = candleStyle.width / 2 + x
             let highestPoint = CGPoint(x: centerX, y: highY)
             let lowestPoint = CGPoint(x: centerX, y: lowY)
             

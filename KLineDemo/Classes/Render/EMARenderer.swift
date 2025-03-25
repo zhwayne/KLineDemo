@@ -13,21 +13,22 @@ struct EMARenderer: IndicatorRenderer {
         
     var type: IndicatorType { .ema }
 
-    func draw(in layer: CALayer, items: [IndicatorData], indices: Range<Int>, context: RenderContext) {
+    func draw(in layer: CALayer, context: RenderContext<IndicatorData>) {
         
         let transformer = context.transformer
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
+        let items = context.items
         
         
         for key in type.keys {
-            let chartStyle = context.styleManager.style(for: key)
+            let indicatorStyle = context.styleManager.indicatorStyle(for: key)
             let sublayer = CAShapeLayer()
             sublayer.frame = rect
             sublayer.contentsScale = UIScreen.main.scale
-            sublayer.lineWidth = 1
-            sublayer.fillColor = chartStyle?.fillColor?.cgColor
-            sublayer.strokeColor = chartStyle?.lineColor.cgColor
+            sublayer.lineWidth = indicatorStyle?.lineWidth ?? 0
+            sublayer.fillColor = indicatorStyle?.fillColor?.cgColor
+            sublayer.strokeColor = indicatorStyle?.lineColor.cgColor
             
             let path = UIBezierPath()
             
@@ -36,7 +37,7 @@ struct EMARenderer: IndicatorRenderer {
                     continue
                 }
                 // 计算 x 坐标
-                let x = transformer.transformX(at: idx) + candleStyle.lineWidth * 0.5
+                let x = transformer.transformX(at: idx) + candleStyle.width * 0.5
                 let y = transformer.transformY(value: value)
                 let centerX = x
                 let point = CGPoint(x: centerX, y: y)

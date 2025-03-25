@@ -212,7 +212,7 @@ extension KLineView {
     private func drawSubIndicator(type: IndicatorType) {
         switch type {
         case .vol:
-            let render = VOLRender()
+            let render = VOLRenderer()
             subRenderers.append(AnyIndicatorRenderer(render))
         case .rsi:
             let render = RSIRenderer()
@@ -289,36 +289,36 @@ extension KLineView {
             offsetY += legendSize.height + 8
         }
         
-        let itemWidth = styleManager.candleStyle.lineWidth + styleManager.candleStyle.gap
+        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candleHeight - offsetY)
         
         // 主图部分
         candleRenderer.draw(
             in: candlestickView.layer,
-            items: visiableKLineItems,
-            indices: scrollView.indices,
             context: RenderContext(
                 transformer: ChartTransformer(
                     dataBounds: mainBounds,
                     itemWidth: itemWidth,
                     viewPort: candlestickRect
                 ),
+                items: visiableKLineItems,
+                indices: scrollView.indices,
                 styleManager: styleManager
             )
         )
-        
+
         // 主图指标部分
         mainRenderers.forEach { renderer in
             renderer.draw(
                 in: candlestickView.layer,
-                items: visiableIndicatorDatas,
-                indices: scrollView.indices,
                 context: RenderContext(
                     transformer: ChartTransformer(
                         dataBounds: mainBounds,
                         itemWidth: itemWidth,
                         viewPort: candlestickRect
                     ),
+                    items: visiableIndicatorDatas,
+                    indices: scrollView.indices,
                     styleManager: styleManager
                 )
             )
@@ -328,14 +328,14 @@ extension KLineView {
         let timelineRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: timelineHeight)
         timelineRenderer.draw(
             in: timelineView.layer,
-            items: visiableKLineItems,
-            indices: scrollView.indices,
             context: RenderContext(
                 transformer: ChartTransformer(
                     dataBounds: mainBounds,
                     itemWidth: itemWidth,
                     viewPort: timelineRect
                 ),
+                items: visiableKLineItems,
+                indices: scrollView.indices,
                 styleManager: styleManager
             )
         )
@@ -356,14 +356,14 @@ extension KLineView {
             }
             renderer.draw(
                 in: subIndicatorView.layer,
-                items: visiableIndicatorDatas,
-                indices: scrollView.indices,
                 context: RenderContext(
                     transformer: ChartTransformer(
                         dataBounds: subBounds,
                         itemWidth: itemWidth,
                         viewPort: subIndicatorRect
                     ),
+                    items: visiableIndicatorDatas,
+                    indices: scrollView.indices,
                     styleManager: styleManager
                 )
             )
@@ -387,14 +387,14 @@ extension KLineView {
                 if type == .vol {
                     let number = NSNumber(integerLiteral: indicatorData.item.volume)
                     let span = NSAttributedString(string: "\(key):\(formatter.string(from: number)!) ", attributes: [
-                        .foregroundColor: styleManager.style(for: key)?.lineColor ?? .label,
+                        .foregroundColor: styleManager.indicatorStyle(for: key)?.lineColor ?? .label,
                         .font: UIFont.systemFont(ofSize: 10)
                     ])
                     text.append(span)
                 } else if let value = indicatorData.getIndicator(forKey: key) as? Double {
                     let number = NSNumber(floatLiteral: value)
                     let span = NSAttributedString(string: "\(key):\(formatter.string(from: number)!) ", attributes: [
-                        .foregroundColor: styleManager.style(for: key)?.lineColor ?? .label,
+                        .foregroundColor: styleManager.indicatorStyle(for: key)?.lineColor ?? .label,
                         .font: UIFont.systemFont(ofSize: 10)
                     ])
                     text.append(span)

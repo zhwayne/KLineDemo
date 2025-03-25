@@ -11,9 +11,11 @@ struct TimelineRenderer: ChartRenderer {
     
     typealias Item = KLineItem
     
-    func draw(in layer: CALayer, items: [KLineItem], indices: Range<Int>, context: RenderContext) {
+    func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
         let rect = layer.bounds
         let transformer = context.transformer
+        let items = context.items
+        let indices = context.indices
         
         let sublayer = CALayer()
         sublayer.frame = rect
@@ -58,24 +60,25 @@ struct TimelineRenderer: ChartRenderer {
             }
         }
         
+        let lineHeight = 1 / UIScreen.main.scale
         let topLinePath = UIBezierPath()
-        topLinePath.move(to: CGPoint(x: -rect.origin.x, y: 0))
-        topLinePath.addLine(to: CGPoint(x: rect.maxX, y: 0))
+        topLinePath.move(to: CGPoint(x: 0, y: lineHeight))
+        topLinePath.addLine(to: CGPoint(x: rect.maxX, y: lineHeight))
         
         let topLineLayer = CAShapeLayer()
         topLineLayer.path = topLinePath.cgPath
-        topLineLayer.lineWidth = 1 / UIScreen.main.scale
+        topLineLayer.lineWidth = lineHeight
         topLineLayer.fillColor = UIColor.clear.cgColor
         topLineLayer.strokeColor = UIColor.separator.cgColor
         sublayer.addSublayer(topLineLayer)
         
         let bottomLinePath = UIBezierPath()
-        bottomLinePath.move(to: CGPoint(x: -rect.origin.x, y: rect.height - 1))
-        bottomLinePath.addLine(to: CGPoint(x: rect.maxX, y: rect.height))
+        bottomLinePath.move(to: CGPoint(x: 0, y: rect.height - lineHeight))
+        bottomLinePath.addLine(to: CGPoint(x: rect.maxX, y: rect.height - lineHeight))
         
         let bottomLineLayer = CAShapeLayer()
         bottomLineLayer.path = bottomLinePath.cgPath
-        bottomLineLayer.lineWidth = 1 / UIScreen.main.scale
+        bottomLineLayer.lineWidth = lineHeight
         bottomLineLayer.fillColor = UIColor.clear.cgColor
         bottomLineLayer.strokeColor = UIColor.separator.cgColor
         sublayer.addSublayer(bottomLineLayer)
