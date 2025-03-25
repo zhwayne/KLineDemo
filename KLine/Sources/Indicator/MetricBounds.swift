@@ -11,6 +11,10 @@ import Foundation
 struct MetricBounds: Sendable {
     var maximum: Double      // 最大值
     var minimum: Double      // 最小值
+    
+    static var initial: Self {
+        MetricBounds(maximum: -.infinity, minimum: .infinity)
+    }
 }
 
 extension MetricBounds {

@@ -31,7 +31,7 @@ struct VOLRenderer: IndicatorRenderer {
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         
-        // 文字
+        // MARK: - 文字
         let textLayer = CATextLayer()
         textLayer.fontSize = 11
         textLayer.foregroundColor = UIColor.secondaryLabel.cgColor

@@ -22,6 +22,8 @@ struct CandleRenderer: ChartRenderer {
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         
+        // MARK: - 顶部线条
+        
         let lineHeight = 1 / UIScreen.main.scale
         let topLinePath = UIBezierPath()
         topLinePath.move(to: CGPoint(x: 0, y: lineHeight))
@@ -36,6 +38,7 @@ struct CandleRenderer: ChartRenderer {
         
         let verticalInset = VerticalInset(top: 8, bottom: 8)
         
+        // MARK: - 蜡烛图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
             let x = transformer.transformX(at: idx)
@@ -72,7 +75,7 @@ struct CandleRenderer: ChartRenderer {
             sublayer.addSublayer(shape)
         }
         
-        // 最高价指示
+        // MARK: - 最高价指示
         if let item = items.max(by: { $0.highest < $1.highest }),
            let index = items.firstIndex(of: item) {
             let x = transformer.transformX(at: index) + candleStyle.width * 0.5
@@ -108,6 +111,7 @@ struct CandleRenderer: ChartRenderer {
             sublayer.addSublayer(textLayer)
         }
         
+        // MARK: - 最低价指示
         if let item = items.max(by: { $0.lowest > $1.lowest }),
            let index = items.firstIndex(of: item) {
             let x = transformer.transformX(at: index) + candleStyle.width * 0.5
@@ -142,8 +146,6 @@ struct CandleRenderer: ChartRenderer {
             sublayer.addSublayer(lineLayer)
             sublayer.addSublayer(textLayer)
         }
-        
-        // 最低价指示
         
         layer.addSublayer(sublayer)
     }

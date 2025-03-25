@@ -27,6 +27,33 @@ protocol IndicatorRenderer: ChartRenderer {
     var type: IndicatorType { get }
 }
 
+//extension ChartRenderer {
+//    
+//    func drawColumnBackground(in layer: CALayer) {
+//        // (不包含第一列和最后一列)
+//        let gridLayer = CAShapeLayer()
+//        gridLayer.lineWidth = 1 / UIScreen.main.scale
+//        gridLayer.fillColor = UIColor.clear.cgColor
+//        gridLayer.strokeColor = UIColor.secondarySystemFill.cgColor
+//        gridLayer.contentsScale = UIScreen.main.scale
+//        
+//        let gridColumns = 6
+//        let columnWidth = layer.bounds.width / CGFloat(gridColumns - 1)
+//        
+//        let path = UIBezierPath()
+//        for idx in (1..<gridColumns - 1) {
+//            let x = CGFloat(idx) * columnWidth
+//            let start = CGPoint(x: x, y: 0)
+//            let end = CGPoint(x: x, y: layer.bounds.height)
+//            path.move(to: start)
+//            path.addLine(to: end)
+//        }
+//        
+//        gridLayer.path = path.cgPath
+//        layer.addSublayer(gridLayer)
+//    }
+//}
+
 struct AnyIndicatorRenderer<T>: IndicatorRenderer {
     typealias Item = T
     let type: IndicatorType

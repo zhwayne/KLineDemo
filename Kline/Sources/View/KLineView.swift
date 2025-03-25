@@ -9,7 +9,7 @@ import UIKit
 import SnapKit
 import Combine
 
-enum KLineChartSection: Sendable {
+enum ChartSection: Sendable {
     case mainChart, subChart
 }
 
@@ -29,7 +29,7 @@ enum KLineChartSection: Sendable {
     private let indicatorHeight: CGFloat = 64
     private var chartHeightConstraint: Constraint!
     
-    private let backgroundRender = BackgroundRenderer()
+    private let backgroundRenderer = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
     private var mainRenderers: [AnyIndicatorRenderer<IndicatorData>] = []
@@ -283,24 +283,24 @@ extension KLineView {
             }
         }
                 
-        legendLabel.attributedText = legendText(for: mainIndicatorTypes)
-        let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-        var offsetY = legendLabel.frame.origin.y
-        if legendSize.height > 0 {
-            offsetY += legendSize.height + 8
-        }
+//        legendLabel.attributedText = legendText(for: mainIndicatorTypes)
+//        let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+//        var offsetY = legendLabel.frame.origin.y
+//        if legendSize.height > 0 {
+//            offsetY += legendSize.height + 8
+//        }
         
         let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
-        let candlestickRect = CGRect(x: rect.minX, y: offsetY, width: rect.width, height: candleHeight - offsetY)
+        let candlestickRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: candleHeight)
         
-        // 背景
-        backgroundRender.draw(
+        // MARK: - 蜡烛图背景
+        backgroundRenderer.draw(
             in: candleView.layer,
             context: RenderContext(
                 transformer: ChartTransformer(
                     dataBounds: mainBounds,
                     itemWidth: itemWidth,
-                    viewPort: rect
+                    viewPort: candlestickRect
                 ),
                 items: visiableKLineItems,
                 indices: scrollView.indices,
@@ -308,7 +308,7 @@ extension KLineView {
             )
         )
         
-        // 主图部分
+        // MARK: - 蜡烛图
         candleRenderer.draw(
             in: candleView.layer,
             context: RenderContext(
@@ -323,7 +323,7 @@ extension KLineView {
             )
         )
 
-        // 主图指标部分
+        // MARK: - 主图指标
         mainRenderers.forEach { renderer in
             renderer.draw(
                 in: candleView.layer,
@@ -340,7 +340,7 @@ extension KLineView {
             )
         }
         
-        // 时间轴部分
+        // MARK: - 时间轴
         let timelineRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: timelineHeight)
         timelineRenderer.draw(
             in: timelineView.layer,
@@ -356,7 +356,7 @@ extension KLineView {
             )
         )
         
-        // 副图指标部分
+        // MARK: - 副图
         for (idx, renderer) in subRenderers.enumerated() {
             let subIndicatorRect = CGRect(
                 x: rect.minX,
@@ -364,7 +364,7 @@ extension KLineView {
                 width: rect.width,
                 height: indicatorHeight
             )
-            var subBounds = MetricBounds(maximum: -Double.infinity, minimum: Double.infinity)
+            var subBounds = MetricBounds.initial
             renderer.type.keys.forEach { key in
                 if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: key) {
                     subBounds.combine(other: indicatorMetricBounds)

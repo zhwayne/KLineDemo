@@ -19,14 +19,19 @@ struct RSIRenderer: IndicatorRenderer {
         let candleStyle = context.styleManager.candleStyle
         let items = context.items
         
+        let sublayer = CALayer()
+        sublayer.frame = rect
+        sublayer.contentsScale = UIScreen.main.scale
+
+        // MARK: -
         for key in type.keys {
             let indicatorStyle = context.styleManager.indicatorStyle(for: key)
-            let sublayer = CAShapeLayer()
-            sublayer.frame = rect
-            sublayer.contentsScale = UIScreen.main.scale
-            sublayer.lineWidth = indicatorStyle?.lineWidth ?? 1
-            sublayer.fillColor = indicatorStyle?.fillColor?.cgColor
-            sublayer.strokeColor = indicatorStyle?.lineColor.cgColor
+            let lineLayer = CAShapeLayer()
+            lineLayer.frame = rect
+            lineLayer.contentsScale = UIScreen.main.scale
+            lineLayer.lineWidth = indicatorStyle?.lineWidth ?? 1
+            lineLayer.fillColor = indicatorStyle?.fillColor?.cgColor
+            lineLayer.strokeColor = indicatorStyle?.lineColor.cgColor
             
             let path = UIBezierPath()
             let verticalInset = VerticalInset(top: 2, bottom: 2)
@@ -49,9 +54,11 @@ struct RSIRenderer: IndicatorRenderer {
             }
             
             
-            sublayer.path = path.cgPath
-            layer.addSublayer(sublayer)
+            lineLayer.path = path.cgPath
+            layer.addSublayer(lineLayer)
         }
+        
+        layer.addSublayer(sublayer)
         
         let lineHeight = 1 / UIScreen.main.scale
         let bottomLinePath = UIBezierPath()

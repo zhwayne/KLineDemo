@@ -16,18 +16,18 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
         case sub(IndicatorType)
     }
 
-    var drawIndicatorPublisher: AnyPublisher<(KLineChartSection, IndicatorType), Never> {
+    var drawIndicatorPublisher: AnyPublisher<(ChartSection, IndicatorType), Never> {
         drawPublisher.eraseToAnyPublisher()
     }
     
-    var eraseIndicatorPublisher: AnyPublisher<(KLineChartSection, IndicatorType), Never> {
+    var eraseIndicatorPublisher: AnyPublisher<(ChartSection, IndicatorType), Never> {
         erasePublisher.eraseToAnyPublisher()
     }
     
     let mainIndicators: [IndicatorType]
     let subIndicators: [IndicatorType]
-    private let drawPublisher = PassthroughSubject<(KLineChartSection, IndicatorType), Never>()
-    private let erasePublisher = PassthroughSubject<(KLineChartSection, IndicatorType), Never>()
+    private let drawPublisher = PassthroughSubject<(ChartSection, IndicatorType), Never>()
+    private let erasePublisher = PassthroughSubject<(ChartSection, IndicatorType), Never>()
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, SectionItem>!
     
