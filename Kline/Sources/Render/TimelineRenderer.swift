@@ -41,12 +41,12 @@ struct TimelineRenderer: ChartRenderer {
             
             let textLayer = CATextLayer()
             textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 10, nil)
-            textLayer.fontSize = 10
+            textLayer.fontSize = 11
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
             sublayer.addSublayer(textLayer)
-            textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 10)
+            textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 11)
             textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY - 1)
             
             let index = Int(ceil(textLayer.position.x / transformer.itemWidth))

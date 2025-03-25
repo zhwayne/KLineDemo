@@ -7,6 +7,14 @@
 
 import UIKit
 
+private let formatter: NumberFormatter = {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.maximumFractionDigits = 4
+    formatter.minimumFractionDigits = 2
+    return formatter
+}()
+
 struct VOLRenderer: IndicatorRenderer {
     
     typealias Item = IndicatorData
@@ -25,12 +33,12 @@ struct VOLRenderer: IndicatorRenderer {
         
         // 文字
         let textLayer = CATextLayer()
-        textLayer.fontSize = 10
+        textLayer.fontSize = 11
         textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
         textLayer.alignmentMode = .center
         textLayer.contentsScale = UIScreen.main.scale
         sublayer.addSublayer(textLayer)
-        textLayer.string = "VOL(XXX):\(items.last!.item.volume)"
+        textLayer.string = "VOL(XXX):\(formatter.string(for: items.last!.item.volume) ?? "")"
         let size = textLayer.preferredFrameSize()
         textLayer.frame = CGRect(x: 16, y: rect.minY + 8, width: size.width, height: size.height)
         layer.addSublayer(textLayer)

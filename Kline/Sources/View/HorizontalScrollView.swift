@@ -79,9 +79,11 @@ final class HorizontalScrollView: UIScrollView {
         let difValue = pinch.scale - oldScale
         
         let newLineWidth = candleStyle.width * (difValue + 1)
+        let newGap = candleStyle.gap * (difValue + 1)
         guard (1...40).contains(newLineWidth) else { return }
         
         styleManager.candleStyle.width = newLineWidth
+        styleManager.candleStyle.gap = newGap
         oldScale = pinch.scale
         
         // 更新 contentSize

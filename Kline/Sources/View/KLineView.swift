@@ -23,7 +23,7 @@ enum KLineChartSection: Sendable {
     private let indicatorTypeView: IndicatorTypeView
     private let subIndicatorView = UIView()
     
-    private let candleHeight: CGFloat = 300
+    private let candleHeight: CGFloat = 320
     private let timelineHeight: CGFloat = 16
     private let indicatorTypeHeight: CGFloat = 32
     private let indicatorHeight: CGFloat = 64
@@ -388,14 +388,14 @@ extension KLineView {
                     let number = NSNumber(integerLiteral: indicatorData.item.volume)
                     let span = NSAttributedString(string: "\(key):\(formatter.string(from: number)!) ", attributes: [
                         .foregroundColor: styleManager.indicatorStyle(for: key)?.lineColor ?? .label,
-                        .font: UIFont.systemFont(ofSize: 10)
+                        .font: UIFont.systemFont(ofSize: 11)
                     ])
                     text.append(span)
                 } else if let value = indicatorData.getIndicator(forKey: key) as? Double {
                     let number = NSNumber(floatLiteral: value)
                     let span = NSAttributedString(string: "\(key):\(formatter.string(from: number)!) ", attributes: [
                         .foregroundColor: styleManager.indicatorStyle(for: key)?.lineColor ?? .label,
-                        .font: UIFont.systemFont(ofSize: 10)
+                        .font: UIFont.systemFont(ofSize: 11)
                     ])
                     text.append(span)
                 }

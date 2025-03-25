@@ -22,7 +22,7 @@ protocol Transformer {
     var viewPort: CGRect { get }
         
     func transformX(at index: Int) -> CGFloat
-    
+        
     func transformY(value: Double, inset: VerticalInset) -> CGFloat
 }
 
