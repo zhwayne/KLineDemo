@@ -19,7 +19,7 @@ public struct IndicatorStyle {
         strokeColor: UIColor,
         lineWidth: CGFloat = 1,
         fillColor: UIColor? = nil,
-        font: UIFont = .systemFont(ofSize: 10)
+        font: UIFont = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
     ) {
         self.strokeColor = strokeColor
         self.lineWidth = lineWidth
@@ -38,40 +38,36 @@ public struct CandleStyle {
 }
 
 @MainActor final public class StyleManager {
-    
-    public static let shared = StyleManager()
-    
-    private init() {}
+        
+    public init() {
+    }
     
     public var candleStyle = CandleStyle()
+    public var priceFractionDigits: Int = 4
     
     private var indicatorStyles: [IndicatorKey: IndicatorStyle] = [
-        .vol: .init(strokeColor: UIColor.darkText),
+        .vol: .init(strokeColor: UIColor.secondaryLabel),
         
-        .ma(period: 5): .init(strokeColor: .systemPink),
-        .ma(period: 20): .init(strokeColor: .systemOrange),
-        .ma(period: 30): .init(strokeColor: .systemPurple),
-        .ma(period: 50): .init(strokeColor: .systemGreen),
-        .ma(period: 120): .init(strokeColor: .systemTeal),
+        .ma(period: 5): .init(strokeColor: .systemOrange),
+        .ma(period: 10): .init(strokeColor: .systemPink),
+        .ma(period: 20): .init(strokeColor: .systemTeal),
         
-        .ema(period: 5): .init(strokeColor: .systemGreen),
-        .ema(period: 10): .init(strokeColor: .systemYellow),
-        .ema(period: 20): .init(strokeColor: .systemPurple),
+        .ema(period: 5): .init(strokeColor: .systemOrange),
+        .ema(period: 10): .init(strokeColor: .systemPink),
+        .ema(period: 20): .init(strokeColor: .systemTeal),
         
-        .rsi(period: 6): .init(strokeColor: .systemGreen),
-        .rsi(period: 12): .init(strokeColor: .systemRed),
-        .rsi(period: 24): .init(strokeColor: .systemPurple)
+        .rsi(period: 6): .init(strokeColor: .systemOrange),
+        .rsi(period: 12): .init(strokeColor: .systemPink),
+        .rsi(period: 24): .init(strokeColor: .systemTeal)
     ]
     
     public func setIndicatorStyle(_ style: IndicatorStyle, for key: IndicatorKey) {
         indicatorStyles[key] = style
     }
     
-    public func indicatorStyle(for key: IndicatorKey) -> IndicatorStyle? {
-        if var style = indicatorStyles[key] {
-            style.candleStyle = candleStyle
-            return style
-        }
-        return nil
+    public func indicatorStyle(for key: IndicatorKey) -> IndicatorStyle {
+        var style = indicatorStyles[key] ?? IndicatorStyle(strokeColor: .black)
+        style.candleStyle = candleStyle
+        return style
     }
 }

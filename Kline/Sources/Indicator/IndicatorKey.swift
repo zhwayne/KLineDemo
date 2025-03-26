@@ -44,7 +44,7 @@ public enum IndicatorType: String, CaseIterable, Sendable {
     public var keys: [IndicatorKey] {
         switch self {
         case .vol:  return [.vol]
-        case .ma:   return [5, 20, 30, 60, 120].map { .ma(period: $0) }
+        case .ma:   return [5, 10, 20].map { .ma(period: $0) }
         case .ema:  return [5, 10, 20].map { .ema(period: $0) }
         case .rsi:  return [6, 12, 24].map { .rsi(period: $0) }
         //case .macd: return [.macd(shortPeriod: 12, longPeriod: 26, signalPeriod: 9)]
@@ -76,3 +76,4 @@ extension IndicatorType {
         }
     }
 }
+

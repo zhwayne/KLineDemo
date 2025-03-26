@@ -7,14 +7,6 @@
 
 import UIKit
 
-private let formatter: NumberFormatter = {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.maximumFractionDigits = 4
-    formatter.minimumFractionDigits = 2
-    return formatter
-}()
-
 struct VOLRenderer: IndicatorRenderer {
     
     typealias Item = IndicatorData
@@ -25,26 +17,33 @@ struct VOLRenderer: IndicatorRenderer {
         let transformer = context.transformer
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
+        let indicatorStyle = context.styleManager.indicatorStyle(for: .vol)
         let items = context.items
+        
+        // MARK: - 网格线（列）
+        drawColumnBackground(in: layer, viewPort: transformer.viewPort)
         
         let sublayer = CALayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
         
-        // MARK: - 文字
+        // MARK: - 标题
         let textLayer = CATextLayer()
-        textLayer.fontSize = 11
-        textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
+        textLayer.font = indicatorStyle.font as CTFont
+        textLayer.fontSize = indicatorStyle.font.pointSize
+        textLayer.foregroundColor = indicatorStyle.strokeColor.cgColor
         textLayer.alignmentMode = .center
         textLayer.contentsScale = UIScreen.main.scale
         sublayer.addSublayer(textLayer)
-        textLayer.string = "VOL(XXX):\(formatter.string(for: items.last!.item.volume) ?? "")"
+        let volume = items.last!.item.volume
+        textLayer.string = "VOL:\(context.styleManager.format(value: volume))"
         let size = textLayer.preferredFrameSize()
-        textLayer.frame = CGRect(x: 16, y: rect.minY + 8, width: size.width, height: size.height)
+        textLayer.frame = CGRect(x: 12, y: rect.minY + 8, width: size.width, height: size.height)
         layer.addSublayer(textLayer)
         
         let verticalInset = AxisInset(top: textLayer.bounds.height + 16, bottom: 2)
         
+        // MARK: - 折线图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
             let x = transformer.transformX(at: idx)
@@ -57,6 +56,7 @@ struct VOLRenderer: IndicatorRenderer {
             shape.path = path.cgPath
             shape.strokeColor = item.item.trend == .up ? candleStyle.upColor.cgColor : candleStyle.downColor.cgColor
             shape.fillColor = item.item.trend == .up ? candleStyle.upColor.cgColor : candleStyle.downColor.cgColor
+            shape.opacity = 0.5
             
             sublayer.addSublayer(shape)
         }

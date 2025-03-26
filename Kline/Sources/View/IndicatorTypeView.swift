@@ -73,9 +73,7 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
                     .horizontal(layoutSize: groupSize, subitem: item, count: 1)
                 }
                 let section = NSCollectionLayoutSection(group: group)
-                //section.orthogonalScrollingBehavior = .continuous
-                section.interGroupSpacing = 20
-                section.contentInsets = .init(top: 0, leading: 16, bottom: 0, trailing: 16)
+                section.contentInsets = .init(top: 0, leading: 8, bottom: 0, trailing: 8)
                 return section
             }
         }, configuration: config)
@@ -148,13 +146,13 @@ private class IndicatorCell: UICollectionViewCell {
     override init(frame: CGRect) {
         super.init(frame: frame)
         label.font = .systemFont(ofSize: 12)
-        label.textColor = .systemGray2
+        label.textColor = .label.withAlphaComponent(0.3)
         label.textAlignment = .center
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         
         contentView.addSubview(label)
         label.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
+            make.edges.equalTo(UIEdgeInsets(top: 0, left: 8, bottom: 0, right: 8))
         }
     }
     
@@ -164,7 +162,9 @@ private class IndicatorCell: UICollectionViewCell {
     
     override var isSelected: Bool {
         didSet {
-            label.textColor = isSelected ? .label : .systemGray2
+            label.textColor = isSelected
+            ? .label.withAlphaComponent(0.7)
+            : .label.withAlphaComponent(0.3)
         }
     }
 }

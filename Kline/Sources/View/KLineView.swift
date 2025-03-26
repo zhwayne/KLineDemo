@@ -26,7 +26,7 @@ enum ChartSection: Sendable {
     private let candleHeight: CGFloat = 320
     private let timelineHeight: CGFloat = 16
     private let indicatorTypeHeight: CGFloat = 32
-    private let indicatorHeight: CGFloat = 64
+    private let indicatorHeight: CGFloat = 80
     private var chartHeightConstraint: Constraint!
     
     private let backgroundRenderer = BackgroundRenderer()
@@ -45,7 +45,7 @@ enum ChartSection: Sendable {
     
     private var disposeBag = Set<AnyCancellable>()
     
-    public required init(styleManager: StyleManager = .shared) {
+    public required init(styleManager: StyleManager) {
         self.styleManager = styleManager
         scrollView = HorizontalScrollView(styleManager: styleManager)
         indicatorTypeView = IndicatorTypeView(
@@ -102,7 +102,7 @@ enum ChartSection: Sendable {
         chartView.addSubview(legendLabel)
         legendLabel.snp.makeConstraints { make in
             make.left.equalTo(12)
-            make.width.equalToSuperview().multipliedBy(0.7)
+            make.width.equalToSuperview().multipliedBy(0.8)
             make.top.equalTo(8)
         }
 
@@ -240,18 +240,21 @@ extension KLineView {
                 }
             }
         }
-                
+             
+        // TODO: 可以考虑将 legend 渲染方式替换成 ChartRenderer。
         legendLabel.attributedText = legendText(for: mainIndicatorTypes)
         let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
         var offsetY = legendLabel.frame.origin.y
         if legendSize.height > 0 {
             offsetY += legendSize.height + 8
+        } else {
+            offsetY = 12
         }
         
         let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         let candleRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: candleHeight)
         let candleTransformer = ChartTransformer(
-            inset: AxisInset(top: offsetY, bottom: 8),
+            inset: AxisInset(top: offsetY, bottom: 12),
             dataBounds: mainBounds,
             itemWidth: itemWidth,
             viewPort: candleRect
@@ -346,23 +349,24 @@ extension KLineView {
             return legendText
         }
         
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = 4
-        formatter.minimumFractionDigits = 2
-        
         types.enumerated().forEach { idx, type in
             let text = NSMutableAttributedString()
             for key in type.keys {
-                var number: NSNumber = 0
+                var number: Double = 0
                 if let value = indicatorData.getIndicator(forKey: key) {
-                    number = NSDecimalNumber(string: "\(value)")
+                    number = NSDecimalNumber(string: "\(value)").doubleValue
                 }
-                
-                let span = NSAttributedString(string: "\(key):\(formatter.string(from: number)!) ", attributes: [
-                    .foregroundColor: styleManager.indicatorStyle(for: key)?.strokeColor ?? .label,
-                    .font: UIFont.systemFont(ofSize: 11)
-                ])
+                let indicatorStyle = styleManager.indicatorStyle(for: key)
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.lineHeightMultiple = 1.1
+                let span = NSAttributedString(
+                    string: "\(key):\(styleManager.format(value: number))  ",
+                    attributes: [
+                        .foregroundColor: indicatorStyle.strokeColor,
+                        .font: indicatorStyle.font,
+                        .paragraphStyle: paragraphStyle
+                    ]
+                )
                 text.append(span)
             }
             if idx != 0 {

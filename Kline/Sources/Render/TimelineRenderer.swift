@@ -26,7 +26,7 @@ struct TimelineRenderer: ChartRenderer {
         let labelWidth = rect.width / CGFloat(labelCount - 1)
         
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MM-dd HH:mm"
+        dateFormatter.dateFormat = "MM/dd HH:mm"
         
         // 网 items 中塞入 nil，以保证和 indices 元素数量相等
         var adjustedItems: [KLineItem?] = items
@@ -40,8 +40,8 @@ struct TimelineRenderer: ChartRenderer {
         for idx in (0..<labelCount) {
             
             let textLayer = CATextLayer()
-            textLayer.font = CTFontCreateWithName("Roboto Mono" as CFString, 11, nil)
-            textLayer.fontSize = 11
+            textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
+            textLayer.fontSize = 10
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
@@ -50,7 +50,6 @@ struct TimelineRenderer: ChartRenderer {
             textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY - 1)
             
             let index = Int(ceil(textLayer.position.x / transformer.itemWidth))
-
             if index >= 0 && index < adjustedItems.count, let item = adjustedItems[index] {
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
                 let timeString = dateFormatter.string(from: date)

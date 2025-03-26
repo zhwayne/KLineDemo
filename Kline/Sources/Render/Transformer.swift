@@ -24,7 +24,7 @@ extension AxisInset {
 
 protocol Transformer {
     
-    var dataBounds: MetricBounds { get }
+    var dataBounds: MetricBounds { get set }
     
     var itemWidth: CGFloat { get }
     
@@ -45,7 +45,7 @@ extension Transformer {
 struct ChartTransformer: Transformer {
 
     private let contentInset: AxisInset
-    let dataBounds: MetricBounds
+    var dataBounds: MetricBounds
     let itemWidth: CGFloat
     let viewPort: CGRect
     

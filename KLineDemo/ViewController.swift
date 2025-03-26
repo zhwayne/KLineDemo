@@ -12,7 +12,7 @@ import KLine
 
 class ViewController: UIViewController {
     
-    private let chartView = KLineView()
+    private let chartView = KLineView(styleManager: StyleManager())
         
     override func viewDidLoad() {
         super.viewDidLoad()

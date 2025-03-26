@@ -60,11 +60,12 @@ struct BackgroundRenderer: ChartRenderer {
             
             // 添加 文本显示
             let textLayer = CATextLayer()
-            textLayer.fontSize = 11
+            textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
+            textLayer.fontSize = 10
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = formatter.string(for: currentValue)
+            textLayer.string = context.styleManager.format(value: currentValue)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: rect.width - 12 - textSize.width,
@@ -102,11 +103,3 @@ struct BackgroundRenderer: ChartRenderer {
         return (actualStep, Swift.min(stepCount, maxLines))
     }
 }
-
-private let formatter: NumberFormatter = {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.maximumFractionDigits = 4
-    formatter.minimumFractionDigits = 2
-    return formatter
-}()

@@ -26,9 +26,9 @@ struct EMARenderer: IndicatorRenderer {
             let sublayer = CAShapeLayer()
             sublayer.frame = rect
             sublayer.contentsScale = UIScreen.main.scale
-            sublayer.lineWidth = indicatorStyle?.lineWidth ?? 0
-            sublayer.fillColor = indicatorStyle?.fillColor?.cgColor
-            sublayer.strokeColor = indicatorStyle?.strokeColor.cgColor
+            sublayer.lineWidth = indicatorStyle.lineWidth
+            sublayer.fillColor = indicatorStyle.fillColor?.cgColor
+            sublayer.strokeColor = indicatorStyle.strokeColor.cgColor
             
             let path = UIBezierPath()
             

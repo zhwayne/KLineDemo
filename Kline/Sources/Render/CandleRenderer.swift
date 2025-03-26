@@ -89,15 +89,16 @@ struct CandleRenderer: ChartRenderer {
             
             let lineLayer = CAShapeLayer()
             lineLayer.lineWidth = 1
-            lineLayer.strokeColor = UIColor.secondaryLabel.cgColor
+            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.7).cgColor
             lineLayer.path = linePath.cgPath
             
             let textLayer = CATextLayer()
-            textLayer.fontSize = 11
-            textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
+            textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
+            textLayer.fontSize = 10
+            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = formatter.string(for: item.highest)
+            textLayer.string = context.styleManager.format(value: item.highest)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: endPoint.x + (rightSide ? 0 : -textSize.width),
@@ -125,15 +126,16 @@ struct CandleRenderer: ChartRenderer {
             
             let lineLayer = CAShapeLayer()
             lineLayer.lineWidth = 1
-            lineLayer.strokeColor = UIColor.secondaryLabel.cgColor
+            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.7).cgColor
             lineLayer.path = linePath.cgPath
             
             let textLayer = CATextLayer()
-            textLayer.fontSize = 11
-            textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
+            textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
+            textLayer.fontSize = 10
+            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = formatter.string(for: item.lowest)
+            textLayer.string = context.styleManager.format(value: item.lowest)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: endPoint.x + (rightSide ? 0 : -textSize.width),
@@ -148,11 +150,3 @@ struct CandleRenderer: ChartRenderer {
         layer.addSublayer(sublayer)
     }
 }
-
-private let formatter: NumberFormatter = {
-    let formatter = NumberFormatter()
-    formatter.numberStyle = .decimal
-    formatter.maximumFractionDigits = 4
-    formatter.minimumFractionDigits = 2
-    return formatter
-}()
