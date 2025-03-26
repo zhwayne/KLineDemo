@@ -43,7 +43,7 @@ struct VOLRenderer: IndicatorRenderer {
         textLayer.frame = CGRect(x: 16, y: rect.minY + 8, width: size.width, height: size.height)
         layer.addSublayer(textLayer)
         
-        let verticalInset = VerticalInset(top: textLayer.bounds.height + 16, bottom: 2)
+        let verticalInset = AxisInset(top: textLayer.bounds.height + 16, bottom: 2)
         
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标

@@ -12,6 +12,8 @@ struct RenderContext<T> {
     let items: [T]
     let indices: Range<Int>
     let styleManager: StyleManager
+    
+    fileprivate var itemType: Any.Type { T.self } // 直接反射泛型类型
 }
 
 /// 定义绘制器协议 KLineRenderer，每种 Renderer 单独负责一种绘制任务，KLineView 通过聚合多个 Renderer 来实现多种绘制效果。
@@ -54,18 +56,35 @@ protocol IndicatorRenderer: ChartRenderer {
 //    }
 //}
 
-struct AnyIndicatorRenderer<T>: IndicatorRenderer {
-    typealias Item = T
+struct AnyIndicatorRenderer: IndicatorRenderer {
     let type: IndicatorType
     
-    private let _draw: (CALayer, RenderContext<T>) -> Void
+    private let _draw: (CALayer, RenderContext<Any>) -> Void
     
-    init<R: IndicatorRenderer>(_ renderer: R) where R.Item == T {
+    fileprivate init<R: IndicatorRenderer>(_ renderer: R) {
         self.type = renderer.type
-        self._draw = renderer.draw
+        self._draw = { layer, context in
+            guard let items = context.items as? [R.Item] else {
+                fatalError("Type mismatch. Expected: \(R.Item.self), Actual: \(context.itemType)")
+            }
+            let concreteContext = RenderContext(
+                transformer: context.transformer,
+                items: items,
+                indices: context.indices,
+                styleManager: context.styleManager
+            )
+            renderer.draw(in: layer, context: concreteContext)
+        }
     }
     
-    func draw(in layer: CALayer, context: RenderContext<T>) {
+    func draw(in layer: CALayer, context: RenderContext<Any>) {
         _draw(layer, context)
+    }
+}
+
+extension IndicatorRenderer {
+    
+    func eraseToAnyRenderer() -> AnyIndicatorRenderer {
+        AnyIndicatorRenderer(self)
     }
 }

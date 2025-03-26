@@ -31,10 +31,10 @@ struct RSIRenderer: IndicatorRenderer {
             lineLayer.contentsScale = UIScreen.main.scale
             lineLayer.lineWidth = indicatorStyle?.lineWidth ?? 1
             lineLayer.fillColor = indicatorStyle?.fillColor?.cgColor
-            lineLayer.strokeColor = indicatorStyle?.lineColor.cgColor
+            lineLayer.strokeColor = indicatorStyle?.strokeColor.cgColor
             
             let path = UIBezierPath()
-            let verticalInset = VerticalInset(top: 2, bottom: 2)
+            let verticalInset = AxisInset(top: 2, bottom: 2)
             
             for (idx, item) in items.enumerated() {
                 guard let value = item.getIndicator(forKey: key) as? Double else {

@@ -36,16 +36,14 @@ struct CandleRenderer: ChartRenderer {
         topLineLayer.strokeColor = UIColor.separator.cgColor
         layer.addSublayer(topLineLayer)
         
-        let verticalInset = VerticalInset(top: 8, bottom: 8)
-        
         // MARK: - 蜡烛图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
             let x = transformer.transformX(at: idx)
             
             // 计算开盘价和收盘价的 y 坐标
-            let openY = transformer.transformY(value: item.opening, inset: verticalInset)
-            let closeY = transformer.transformY(value: item.closing, inset: verticalInset)
+            let openY = transformer.transformY(value: item.opening)
+            let closeY = transformer.transformY(value: item.closing)
             let y = min(openY, closeY)
             let h = abs(openY - closeY)
             
@@ -53,8 +51,8 @@ struct CandleRenderer: ChartRenderer {
             let path = UIBezierPath(rect: rect)
             
             // 计算最高价和最低价的 y 坐标
-            let highY = transformer.transformY(value: item.highest, inset: verticalInset)
-            let lowY = transformer.transformY(value: item.lowest, inset: verticalInset)
+            let highY = transformer.transformY(value: item.highest)
+            let lowY = transformer.transformY(value: item.lowest)
             
             let centerX = candleStyle.width / 2 + x
             let highestPoint = CGPoint(x: centerX, y: highY)
@@ -79,7 +77,7 @@ struct CandleRenderer: ChartRenderer {
         if let item = items.max(by: { $0.highest < $1.highest }),
            let index = items.firstIndex(of: item) {
             let x = transformer.transformX(at: index) + candleStyle.width * 0.5
-            let y = transformer.transformY(value: item.highest, inset: verticalInset)
+            let y = transformer.transformY(value: item.highest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
             let startPoint = CGPoint(x: x, y: y)
@@ -115,7 +113,7 @@ struct CandleRenderer: ChartRenderer {
         if let item = items.max(by: { $0.lowest > $1.lowest }),
            let index = items.firstIndex(of: item) {
             let x = transformer.transformX(at: index) + candleStyle.width * 0.5
-            let y = transformer.transformY(value: item.lowest, inset: verticalInset)
+            let y = transformer.transformY(value: item.lowest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
             let startPoint = CGPoint(x: x, y: y)

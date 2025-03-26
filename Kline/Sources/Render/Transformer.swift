@@ -8,11 +8,18 @@
 import UIKit
 import CoreLocation
 
-struct VerticalInset {
+struct AxisInset {
     let top: CGFloat
     let bottom: CGFloat
     
-    static var zero: VerticalInset { .init(top: 0, bottom: 0) }
+    static var zero: AxisInset { .init(top: 0, bottom: 0) }
+}
+
+extension AxisInset {
+    
+    func merge(_ other: AxisInset) -> AxisInset {
+        return AxisInset(top: top + other.top, bottom: bottom + other.bottom)
+    }
 }
 
 protocol Transformer {
@@ -25,7 +32,7 @@ protocol Transformer {
         
     func transformX(at index: Int) -> CGFloat
         
-    func transformY(value: Double, inset: VerticalInset) -> CGFloat
+    func transformY(value: Double, inset: AxisInset) -> CGFloat
 }
 
 extension Transformer {
@@ -37,11 +44,13 @@ extension Transformer {
 
 struct ChartTransformer: Transformer {
 
+    private let contentInset: AxisInset
     let dataBounds: MetricBounds
     let itemWidth: CGFloat
     let viewPort: CGRect
     
-    init(dataBounds: MetricBounds, itemWidth: CGFloat, viewPort: CGRect) {
+    init(inset: AxisInset = .zero, dataBounds: MetricBounds, itemWidth: CGFloat, viewPort: CGRect) {
+        self.contentInset = inset
         self.dataBounds = dataBounds
         self.itemWidth = itemWidth
         self.viewPort = viewPort
@@ -53,10 +62,12 @@ struct ChartTransformer: Transformer {
     }
     
     /// 将数据值映射为图表上的 y 坐标。
-    func transformY(value: Double, inset: VerticalInset) -> CGFloat {
+    func transformY(value: Double, inset: AxisInset) -> CGFloat {
         // 将数据值映射到图表高度上的位置。
         // valueRatio 表示数据值在最小值和最大值之间的归一化比例。
         let valueRatio = CGFloat((value - dataBounds.minimum) / dataBounds.distance)
-        return inset.top + (1.0 - valueRatio) * (viewPort.height - inset.top - inset.bottom)
+        let adjustedInset = contentInset.merge(inset)
+        let height = viewPort.height - adjustedInset.top - adjustedInset.bottom
+        return adjustedInset.top + (1.0 - valueRatio) * height
     }
 }

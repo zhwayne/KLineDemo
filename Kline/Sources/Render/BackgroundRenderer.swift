@@ -47,17 +47,14 @@ struct BackgroundRenderer: ChartRenderer {
             max: dataBounds.maximum,
             maxLines: 8
         )
-        let verticalInset = VerticalInset(top: 8, bottom: 8)
+
         var currentValue = floor(dataBounds.minimum / stepSize) * stepSize
         var y: CGFloat = rect.maxY
         while y > 0 {
             defer {
                 currentValue += stepSize
             }
-            y = transformer.transformY(
-                value: currentValue,
-                inset: verticalInset // 和主图数据范围留白保持一致
-            )
+            y = transformer.transformY(value: currentValue)
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: rect.width, y: y))
             
