@@ -9,7 +9,7 @@ import Foundation
 import UIKit
 
 public enum ScrollPosition {
-    case top, end, current
+    case left, right, current
 }
 
 final class HorizontalScrollView: UIScrollView {
@@ -38,6 +38,7 @@ final class HorizontalScrollView: UIScrollView {
         delaysContentTouches = false
         alwaysBounceVertical = false
                 
+        contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(contentView)
         
         // pinch
@@ -80,7 +81,7 @@ final class HorizontalScrollView: UIScrollView {
         
         let newLineWidth = candleStyle.width * (difValue + 1)
         let newGap = candleStyle.gap * (difValue + 1)
-        guard (1...40).contains(newLineWidth) else { return }
+        guard (1...32).contains(newLineWidth) else { return }
         
         styleManager.candleStyle.width = newLineWidth
         styleManager.candleStyle.gap = newGap
@@ -133,7 +134,7 @@ extension HorizontalScrollView {
         return startIndex..<(startIndex + itemCountToBeDrawn)
     }
     
-    var visiableRange: Range<Int> {
+    var visibleRange: Range<Int> {
         let range = indices
         let lowerBound = min(max(range.lowerBound, 0), klineItemCount)
         let upperBound = max(min(range.upperBound, klineItemCount), 0)
@@ -155,10 +156,10 @@ extension HorizontalScrollView {
          */
     }
     
-    var visiableRect: CGRect {
-        guard !visiableRange.isEmpty else { return .zero }
-        let lowerBound = CGFloat(visiableRange.lowerBound)
-        let upperBound = CGFloat(visiableRange.upperBound)
+    var frameOfVisibleRangeInConentView: CGRect {
+        guard !visibleRange.isEmpty else { return .zero }
+        let lowerBound = CGFloat(visibleRange.lowerBound)
+        let upperBound = CGFloat(visibleRange.upperBound)
         let itemWidth = candleStyle.width + candleStyle.gap
         let offset = lowerBound * (itemWidth) - contentOffset.x
         let width = (upperBound - lowerBound) * itemWidth
@@ -166,7 +167,7 @@ extension HorizontalScrollView {
         return CGRect(x: offset, y: 0, width: width, height: height)
     }
     
-    func scroll(to scrollPosition: ScrollPosition) {
+    func scroll(to scrollPosition: ScrollPosition, animated: Bool) {
         // 获取当前的显示位置比例
         var offsetRatio: CGFloat = 0
         if contentSize.width > 0 {
@@ -177,9 +178,9 @@ extension HorizontalScrollView {
         // updateScrollViewContentSize()
         
         var offsetX: CGFloat = 0
-        if scrollPosition == .top {
+        if scrollPosition == .left {
             offsetX = -contentInset.left
-        } else if scrollPosition == .end {
+        } else if scrollPosition == .right {
             // 显示最后一屏
             offsetX = contentSize.width - frame.width + contentInset.right
         } else {
@@ -188,6 +189,7 @@ extension HorizontalScrollView {
         }
         
         // 设置新的 contentOffset，确保不超出范围
-        contentOffset.x = offsetX
+        let offset = CGPoint(x: offsetX, y: contentOffset.y)
+        setContentOffset(offset, animated: animated)
     }
 }

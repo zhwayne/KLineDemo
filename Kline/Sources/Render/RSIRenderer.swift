@@ -15,12 +15,12 @@ struct RSIRenderer: IndicatorRenderer {
     
     func draw(in layer: CALayer, context: RenderContext<IndicatorData>) {
         var transformer = context.transformer
-        transformer.dataBounds.combine(other: .init(maximum: 70, minimum: 30))
+        transformer.dataBounds.combine(other: .init(max: 70, min: 30))
         
         let rect = transformer.viewPort
         let styleManager = context.styleManager
         let candleStyle = context.styleManager.candleStyle
-        let items = context.items
+        let items = context.visibleItems
         
         let sublayer = CALayer()
         sublayer.frame = rect
@@ -80,7 +80,7 @@ struct RSIRenderer: IndicatorRenderer {
                     continue
                 }
                 // 计算 x 坐标
-                let x = transformer.transformX(at: idx) + candleStyle.width * 0.5
+                let x = transformer.viewPortMinX(at: idx) + candleStyle.width * 0.5
                 let y = transformer.transformY(value: value, inset: verticalInset)
                 let centerX = x
                 let point = CGPoint(x: centerX, y: y)
@@ -100,7 +100,7 @@ struct RSIRenderer: IndicatorRenderer {
         // MARK: - 超买和超卖区域
         let oby = transformer.transformY(value: 70, inset: verticalInset)
         let osy = transformer.transformY(value: 30, inset: verticalInset)
-        let maxX = transformer.transformX(at: items.count - 1) + candleStyle.width * 0.5
+        let maxX = transformer.viewPortMinX(at: items.count - 1) + candleStyle.width * 0.5
         let overRect = CGRect(x: 0, y: oby, width: maxX, height: osy - oby)
         let overAreaShape = CAShapeLayer()
         overAreaShape.fillColor = UIColor.systemBlue.withAlphaComponent(0.1).cgColor

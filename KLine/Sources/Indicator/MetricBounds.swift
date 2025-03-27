@@ -9,23 +9,23 @@ import Foundation
 
 /// 表示特定指标的最大值和最小值。
 struct MetricBounds: Sendable {
-    var maximum: Double      // 最大值
-    var minimum: Double      // 最小值
+    var max: Double      // 最大值
+    var min: Double      // 最小值
     
-    static var initial: Self {
-        MetricBounds(maximum: -.infinity, minimum: .infinity)
+    static var zero: Self {
+        MetricBounds(max: 0, min: 0)
     }
 }
 
 extension MetricBounds {
     /// 最大值与最小值的距离。
-    var distance: Double { maximum - minimum }
+    var distance: Double { max - min }
     
     /// 合并另一个 `MetricBounds`，更新最大值和最小值。
     ///
     /// - Parameter other: 需要合并的另一个 `MetricBounds`。
     mutating func combine(other bounds: MetricBounds) {
-        maximum = max(maximum, bounds.maximum)
-        minimum = min(minimum, bounds.minimum)
+        max = Swift.max(max, bounds.max)
+        min = Swift.min(min, bounds.min)
     }
 }

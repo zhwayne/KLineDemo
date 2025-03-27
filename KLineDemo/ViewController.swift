@@ -60,7 +60,7 @@ class ViewController: UIViewController {
             )
         }
         
-        chartView.reloadData(items: items.reversed(), scrollPosition: .end)
+        chartView.draw(items: items.reversed(), scrollPosition: .right)
     }
 }
 

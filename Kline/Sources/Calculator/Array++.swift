@@ -72,7 +72,7 @@ extension Collection where Element == IndicatorData {
             return nil
         }
         
-        return MetricBounds(maximum: maxVal, minimum: minVal)
+        return MetricBounds(max: maxVal, min: minVal)
     }
 }
 
@@ -80,12 +80,12 @@ extension Collection where Element == IndicatorData {
 extension Collection where Element == KLineItem {
     
     /// 计算数组中的价格范围（最大值和最小值）。
-    var priceBounds: MetricBounds? {
-        guard !isEmpty else { return nil }
-        
+    var priceBounds: MetricBounds {
+        guard !isEmpty else { return .zero }
+
         let minPrice = self.map { Swift.min($0.opening, $0.closing, $0.highest, $0.lowest) }.min() ?? 0
         let maxPrice = self.map { Swift.max($0.opening, $0.closing, $0.highest, $0.lowest) }.max() ?? 0
         
-        return MetricBounds(maximum: maxPrice, minimum: minPrice)
+        return MetricBounds(max: maxPrice, min: minPrice)
     }
 }

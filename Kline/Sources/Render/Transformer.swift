@@ -30,7 +30,9 @@ protocol Transformer {
     
     var viewPort: CGRect { get }
         
-    func transformX(at index: Int) -> CGFloat
+    func viewPortMinX(at index: Int) -> CGFloat
+    
+    func layerMinX(at index: Int) -> CGFloat
         
     func transformY(value: Double, inset: AxisInset) -> CGFloat
 }
@@ -57,15 +59,19 @@ struct ChartTransformer: Transformer {
     }
     
     /// 将数据索引映射为图表上的 x 坐标。
-    func transformX(at index: Int) -> CGFloat {
+    func viewPortMinX(at index: Int) -> CGFloat {
         return CGFloat(index) * itemWidth
+    }
+    
+    func layerMinX(at index: Int) -> CGFloat {
+        viewPortMinX(at: index) + viewPort.minX
     }
     
     /// 将数据值映射为图表上的 y 坐标。
     func transformY(value: Double, inset: AxisInset) -> CGFloat {
         // 将数据值映射到图表高度上的位置。
         // valueRatio 表示数据值在最小值和最大值之间的归一化比例。
-        let valueRatio = CGFloat((value - dataBounds.minimum) / dataBounds.distance)
+        let valueRatio = CGFloat((value - dataBounds.min) / dataBounds.distance)
         let adjustedInset = contentInset.merge(inset)
         let height = viewPort.height - adjustedInset.top - adjustedInset.bottom
         return adjustedInset.top + (1.0 - valueRatio) * height

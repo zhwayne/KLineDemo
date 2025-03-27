@@ -14,7 +14,7 @@ struct TimelineRenderer: ChartRenderer {
     func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
         let rect = layer.bounds
         let transformer = context.transformer
-        let items = context.items
+        let items = context.visibleItems
         let indices = context.indices
         
         let sublayer = CALayer()
@@ -29,7 +29,7 @@ struct TimelineRenderer: ChartRenderer {
         dateFormatter.dateFormat = "MM/dd HH:mm"
         
         // 网 items 中塞入 nil，以保证和 indices 元素数量相等
-        var adjustedItems: [KLineItem?] = items
+        var adjustedItems: [KLineItem?] = Array(items)
         indices.forEach { idx in
             if idx < 0 {
                 adjustedItems.insert(nil, at: 0)

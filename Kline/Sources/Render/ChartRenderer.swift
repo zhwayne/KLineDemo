@@ -10,8 +10,12 @@ import UIKit
 struct RenderContext<T> {
     let transformer: Transformer
     let items: [T]
+    let visibleRange: Range<Int>
     let indices: Range<Int>
     let styleManager: StyleManager
+    let canvansView: UIView
+    
+    var visibleItems: [T] { Array(items[visibleRange]) }
     
     fileprivate var itemType: Any.Type { T.self } // 直接反射泛型类型
 }
@@ -37,7 +41,7 @@ extension ChartRenderer {
         let gridLayer = CAShapeLayer()
         gridLayer.lineWidth = 1 / UIScreen.main.scale
         gridLayer.fillColor = UIColor.clear.cgColor
-        gridLayer.strokeColor = UIColor.secondarySystemFill.cgColor
+        gridLayer.strokeColor = UIColor.systemFill.cgColor
         gridLayer.contentsScale = UIScreen.main.scale
         
         let gridColumns = 6
@@ -71,8 +75,10 @@ struct AnyIndicatorRenderer: IndicatorRenderer {
             let concreteContext = RenderContext(
                 transformer: context.transformer,
                 items: items,
+                visibleRange: context.visibleRange,
                 indices: context.indices,
-                styleManager: context.styleManager
+                styleManager: context.styleManager,
+                canvansView: context.canvansView
             )
             renderer.draw(in: layer, context: concreteContext)
         }

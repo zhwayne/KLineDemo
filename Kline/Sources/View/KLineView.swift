@@ -17,11 +17,11 @@ enum ChartSection: Sendable {
 
     private let chartView = UIView()
     private let scrollView: HorizontalScrollView
-    private let candleView = UIView()
-    private let timelineView = UIView()
+    private let candleView = CanvansView()
+    private let timelineView = CanvansView()
     private let legendLabel = UILabel()
     private let indicatorTypeView: IndicatorTypeView
-    private let subIndicatorView = UIView()
+    private let subIndicatorView = CanvansView()
     
     private let candleHeight: CGFloat = 320
     private let timelineHeight: CGFloat = 16
@@ -86,14 +86,14 @@ enum ChartSection: Sendable {
         
         scrollView.contentView.addSubview(timelineView)
         timelineView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
+            make.left.width.equalToSuperview()
             make.top.equalTo(candleView.snp.bottom)
             make.height.equalTo(timelineHeight)
         }
         
         scrollView.contentView.addSubview(subIndicatorView)
         subIndicatorView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
+            make.left.width.equalToSuperview()
             make.top.equalTo(timelineView.snp.bottom)
             make.bottom.equalToSuperview()
         }
@@ -121,7 +121,7 @@ enum ChartSection: Sendable {
     
     public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        drawVisiableItems()
+        drawVisibleContent()
     }
    
     private func updateChartHeightConstraint() {
@@ -131,23 +131,33 @@ enum ChartSection: Sendable {
     private func setupBindings() {
         indicatorTypeView.drawIndicatorPublisher
             .sink { [unowned self] section, type in
-                if section == .mainChart {
-                    drawMainIndicator(type: type)
-                } else {
-                    drawSubIndicator(type: type)
+                Task(priority: .userInitiated) {
+                    if section == .mainChart {
+                        await drawMainIndicator(type: type)
+                    } else {
+                        await drawSubIndicator(type: type)
+                    }
+                    updateChartHeightConstraint()
                 }
-                updateChartHeightConstraint()
             }
             .store(in: &disposeBag)
         
         indicatorTypeView.eraseIndicatorPublisher
             .sink { [unowned self] section, type in
-                if section == .mainChart {
-                    eraseMainIndicator(type: type)
-                } else {
-                    eraseSubIndicator(type: type)
+                Task(priority: .userInitiated) {
+                    if section == .mainChart {
+                        await eraseMainIndicator(type: type)
+                    } else {
+                        await eraseSubIndicator(type: type)
+                    }
+                    updateChartHeightConstraint()
                 }
-                updateChartHeightConstraint()
+            }
+            .store(in: &disposeBag)
+        
+        NotificationCenter.default.publisher(for: .scrollToTop)
+            .sink { [weak self] _ in
+                self?.scrollView.scroll(to: .right, animated: true)
             }
             .store(in: &disposeBag)
     }
@@ -155,174 +165,228 @@ enum ChartSection: Sendable {
 
 extension KLineView {
     
-    public func reloadData(items: [KLineItem], scrollPosition: ScrollPosition) {
+    public func draw(items: [KLineItem], scrollPosition: ScrollPosition) {
         Task {
-            do {
-                kLineItems = items
-                scrollView.klineItemCount = items.count
-                indicatorDatas = try await items.decorateWithIndicators(calculators: calculators)
-                scrollView.scroll(to: scrollPosition)
-                drawVisiableItems()
-            } catch {
-                print(error)
-            }
+            kLineItems = items
+            scrollView.klineItemCount = items.count
+            await redrawContent(scrollPosition: scrollPosition)
+        }
+    }
+    
+    private func redrawContent(scrollPosition: ScrollPosition) async {
+        do {
+            indicatorDatas = try await kLineItems.decorateWithIndicators(calculators: calculators)
+            scrollView.scroll(to: scrollPosition, animated: false)
+            drawVisibleContent()
+        } catch {
+            print(error)
         }
     }
 }
 
 extension KLineView {
     
-    private func drawMainIndicator(type: IndicatorType) {
+    private func drawMainIndicator(type: IndicatorType) async {
         mainIndicatorTypes.append(type)
         if type != .vol {
             mainRenderers.append(type.renderer)
         }
         calculators.append(contentsOf: type.keys.map(\.calculator))
-        reloadData(items: kLineItems, scrollPosition: .current)
+        await redrawContent(scrollPosition: .current)
     }
     
-    private func eraseMainIndicator(type: IndicatorType) {
+    private func eraseMainIndicator(type: IndicatorType) async {
         mainIndicatorTypes.removeAll(where: { $0 == type })
         mainRenderers.removeAll { $0.type == type }
         for key in type.keys {
             calculators.removeAll(where: { $0.key == key })
         }
-        reloadData(items: kLineItems, scrollPosition: .current)
+        await redrawContent(scrollPosition: .current)
     }
     
-    private func drawSubIndicator(type: IndicatorType) {
+    private func drawSubIndicator(type: IndicatorType) async {
         subIndicatorTypes.append(type)
         subRenderers.append(type.renderer)
         calculators.append(contentsOf: type.keys.map(\.calculator))
-        reloadData(items: kLineItems, scrollPosition: .current)
+        await redrawContent(scrollPosition: .current)
     }
     
-    private func eraseSubIndicator(type: IndicatorType) {
+    private func eraseSubIndicator(type: IndicatorType) async {
         subIndicatorTypes.removeAll(where: { $0 == type })
         subRenderers.removeAll { $0.type == type }
         for key in type.keys {
             calculators.removeAll(where: { $0.key == key })
         }
-        reloadData(items: kLineItems, scrollPosition: .current)
+        await redrawContent(scrollPosition: .current)
     }
 }
 
 extension KLineView {
    
-    private func drawVisiableItems() {
-        drawVisiableItems(in: scrollView.visiableRect)
-    }
-    
-    private var visiableKLineItems: [KLineItem] {
+    private var visibleItems: ArraySlice<KLineItem> {
         if kLineItems.isEmpty { return [] }
-        return Array(kLineItems[scrollView.visiableRange])
+        return kLineItems[scrollView.visibleRange]
     }
     
-    private var visiableIndicatorDatas: [IndicatorData] {
+    private var visibleDatas: ArraySlice<IndicatorData> {
         if indicatorDatas.isEmpty { return [] }
-        return Array(indicatorDatas[scrollView.visiableRange])
+        return indicatorDatas[scrollView.visibleRange]
     }
     
-    private func drawVisiableItems(in rect: CGRect) {
-        candleView.layer.sublayers = nil
-        timelineView.layer.sublayers = nil
-        subIndicatorView.layer.sublayers = nil
+    private func drawVisibleContent() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        CATransaction.setAnimationDuration(0)
+        defer {
+            CATransaction.commit()
+        }
+        candleView.canvans.sublayers = nil
+        timelineView.canvans.sublayers = nil
+        subIndicatorView.canvans.sublayers = nil
         
-        let visiableKLineItems = self.visiableKLineItems
-        let visiableIndicatorDatas = self.visiableIndicatorDatas
-                
+        let visibleRange = scrollView.visibleRange
+        let visibleRect = scrollView.frameOfVisibleRangeInConentView
+        let indices = scrollView.indices
+            
+        
+        // MARK: - 绘制主图
+        drawMainChartSection(
+            in: visibleRect,
+            visibleRange: visibleRange,
+            indices: indices
+        )
+        
+        // MARK: - 绘制时间轴
+        drawTimeline(
+            in: visibleRect,
+            visibleRange: visibleRange,
+            indices: indices
+        )
+        
+        // MARK: - 绘制副图
+        drawSubChartSection(
+            in: visibleRect,
+            visibleRange: visibleRange,
+            indices: indices
+        )
+    }
+    
+    /// 绘制主图区域内的所有内容，包括图例，背景，蜡烛图，主图指标。
+    private func drawMainChartSection(
+        in visibleRect: CGRect,
+        visibleRange: Range<Int>,
+        indices: Range<Int>
+    ) {
+        
+        // 绘制图例。可以考虑将 legend 渲染方式替换成 ChartRenderer。
+        legendLabel.attributedText = legendText(for: mainIndicatorTypes)
+        let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
+        var offsetY: CGFloat = 16
+        if legendSize.height > 0 {
+            offsetY = legendLabel.frame.origin.y + legendSize.height + 8
+        }
+        
+        let candleInset = AxisInset(top: offsetY, bottom: 16)
+        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
+        let rect = CGRect(
+            x: visibleRect.minX,
+            y: 0,
+            width: visibleRect.width,
+            height: candleHeight
+        )
+        
         // 获取可见区域内数据的 metricBounds
-        guard var mainBounds = visiableKLineItems.priceBounds else { return }
+        var dataBounds = visibleItems.priceBounds
+        
         mainRenderers.forEach { renderer in
             renderer.type.keys.forEach { key in
-                if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: key) {
-                    mainBounds.combine(other: indicatorMetricBounds)
+                if let indicatorMetricBounds = visibleDatas.bounds(for: key) {
+                    dataBounds.combine(other: indicatorMetricBounds)
                 }
             }
         }
-             
-        // TODO: 可以考虑将 legend 渲染方式替换成 ChartRenderer。
-        legendLabel.attributedText = legendText(for: mainIndicatorTypes)
-        let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
-        var offsetY = legendLabel.frame.origin.y
-        if legendSize.height > 0 {
-            offsetY += legendSize.height + 8
-        } else {
-            offsetY = 12
-        }
         
-        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
-        let candleRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: candleHeight)
-        let candleTransformer = ChartTransformer(
-            inset: AxisInset(top: offsetY, bottom: 12),
-            dataBounds: mainBounds,
+        let candleTransform = ChartTransformer(
+            inset: candleInset,
+            dataBounds: dataBounds,
             itemWidth: itemWidth,
-            viewPort: candleRect
+            viewPort: rect
+        )
+        let itemCtx = RenderContext(
+            transformer: candleTransform,
+            items: kLineItems,
+            visibleRange: visibleRange,
+            indices: scrollView.indices,
+            styleManager: styleManager,
+            canvansView: candleView
+        )
+        let dataCtx: RenderContext<Any> = RenderContext(
+            transformer: candleTransform,
+            items: indicatorDatas,
+            visibleRange: visibleRange,
+            indices: indices,
+            styleManager: styleManager,
+            canvansView: candleView
         )
         
-        // MARK: - 蜡烛图背景
-        backgroundRenderer.draw(
-            in: candleView.layer,
-            context: RenderContext(
-                transformer: candleTransformer,
-                items: visiableKLineItems,
-                indices: scrollView.indices,
-                styleManager: styleManager
-            )
-        )
+        // 蜡烛图背景
+        backgroundRenderer.draw(in: candleView.canvans, context: itemCtx)
         
-        // MARK: - 蜡烛图
-        candleRenderer.draw(
-            in: candleView.layer,
-            context: RenderContext(
-                transformer: candleTransformer,
-                items: visiableKLineItems,
-                indices: scrollView.indices,
-                styleManager: styleManager
-            )
-        )
-
-        // MARK: - 主图指标
+        // 蜡烛图
+        candleRenderer.draw(in: candleView.canvans, context: itemCtx)
+        
+        // 主图指标
         mainRenderers.forEach { renderer in
-            renderer.draw(
-                in: candleView.layer,
-                context: RenderContext(
-                    transformer: candleTransformer,
-                    items: visiableIndicatorDatas,
-                    indices: scrollView.indices,
-                    styleManager: styleManager
-                )
-            )
+            renderer.draw(in: candleView.canvans, context: dataCtx)
         }
+    }
+    
+    /// 绘制时间轴
+    private func drawTimeline(
+        in visibleRect: CGRect,
+        visibleRange: Range<Int>,
+        indices: Range<Int>
+    ) {
+        let rect = CGRect(
+            x: visibleRect.minX,
+            y: 0,
+            width: visibleRect.width,
+            height: timelineHeight
+        )
+        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         
-        // MARK: - 时间轴
-        let timelineRect = CGRect(x: rect.minX, y: 0, width: rect.width, height: timelineHeight)
-        let timelineTransformer = ChartTransformer(
-            dataBounds: mainBounds,
+        let transformer = ChartTransformer(
+            dataBounds: .zero,
             itemWidth: itemWidth,
-            viewPort: timelineRect
+            viewPort: rect
         )
-        timelineRenderer.draw(
-            in: timelineView.layer,
-            context: RenderContext(
-                transformer: timelineTransformer,
-                items: visiableKLineItems,
-                indices: scrollView.indices,
-                styleManager: styleManager
-            )
+        let itemCtx = RenderContext(
+            transformer: transformer,
+            items: kLineItems,
+            visibleRange: visibleRange,
+            indices: indices,
+            styleManager: styleManager,
+            canvansView: timelineView
         )
-        
-        // MARK: - 副图
+        timelineRenderer.draw(in: timelineView.canvans, context: itemCtx)
+    }
+    
+    private func drawSubChartSection(
+        in visibleRect: CGRect,
+        visibleRange: Range<Int>,
+        indices: Range<Int>
+    ) {
+        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         for (idx, renderer) in subRenderers.enumerated() {
             let indicatorRect = CGRect(
-                x: rect.minX,
+                x: visibleRect.minX,
                 y: CGFloat(idx) * indicatorHeight,
-                width: rect.width,
+                width: visibleRect.width,
                 height: indicatorHeight
             )
-            var dataBounds = MetricBounds.initial
+            var dataBounds = MetricBounds.zero
             renderer.type.keys.forEach { key in
-                if let indicatorMetricBounds = visiableIndicatorDatas.bounds(for: key) {
+                if let indicatorMetricBounds = visibleDatas.bounds(for: key) {
                     dataBounds.combine(other: indicatorMetricBounds)
                 }
             }
@@ -331,21 +395,21 @@ extension KLineView {
                 itemWidth: itemWidth,
                 viewPort: indicatorRect
             )
-            renderer.draw(
-                in: subIndicatorView.layer,
-                context: RenderContext(
-                    transformer: transformer,
-                    items: visiableIndicatorDatas,
-                    indices: scrollView.indices,
-                    styleManager: styleManager
-                )
+            let dataCtx: RenderContext<Any> = RenderContext(
+                transformer: transformer,
+                items: indicatorDatas,
+                visibleRange: visibleRange,
+                indices: indices,
+                styleManager: styleManager,
+                canvansView: subIndicatorView
             )
+            renderer.draw(in: subIndicatorView.canvans, context: dataCtx)
         }
     }
     
     private func legendText(for types: [IndicatorType]) -> NSAttributedString {
         let legendText = NSMutableAttributedString()
-        guard let indicatorData = visiableIndicatorDatas.last else {
+        guard let indicatorData = visibleDatas.last else {
             return legendText
         }
         
@@ -382,7 +446,7 @@ extension KLineView: UIScrollViewDelegate {
     
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
-            drawVisiableItems()
+            drawVisibleContent()
         }
     }
 }

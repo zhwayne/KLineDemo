@@ -7,20 +7,23 @@
 
 import UIKit
 
-struct CandleRenderer: ChartRenderer {
+class CandleRenderer: ChartRenderer {
     
     typealias Item = KLineItem
     typealias Style = CandleStyle
     
+    private let priceIndicatorView = PriceIndicatorView()
+    
     func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
         let transformer = context.transformer
-        let rect = transformer.viewPort
+        let viewPort = transformer.viewPort
+        let styleManager = context.styleManager
         let candleStyle = context.styleManager.candleStyle
-        let items = context.items
-        
+        let visibleItems = context.visibleItems
         let sublayer = CALayer()
-        sublayer.frame = rect
+        sublayer.frame = viewPort
         sublayer.contentsScale = UIScreen.main.scale
+        layer.addSublayer(sublayer)
         
         // MARK: - 顶部线条
         
@@ -37,9 +40,9 @@ struct CandleRenderer: ChartRenderer {
         layer.addSublayer(topLineLayer)
         
         // MARK: - 蜡烛图
-        for (idx, item) in items.enumerated() {
+        for (idx, item) in visibleItems.enumerated() {
             // 计算 x 坐标
-            let x = transformer.transformX(at: idx)
+            let x = transformer.viewPortMinX(at: idx)
             
             // 计算开盘价和收盘价的 y 坐标
             let openY = transformer.transformY(value: item.opening)
@@ -74,9 +77,9 @@ struct CandleRenderer: ChartRenderer {
         }
         
         // MARK: - 最高价指示
-        if let item = items.max(by: { $0.highest < $1.highest }),
-           let index = items.firstIndex(of: item) {
-            let x = transformer.transformX(at: index) + candleStyle.width * 0.5
+        if let item = visibleItems.max(by: { $0.highest < $1.highest }),
+           let index = visibleItems.firstIndex(of: item) {
+            let x = transformer.viewPortMinX(at: index) + candleStyle.width * 0.5
             let y = transformer.transformY(value: item.highest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
@@ -111,9 +114,9 @@ struct CandleRenderer: ChartRenderer {
         }
         
         // MARK: - 最低价指示
-        if let item = items.max(by: { $0.lowest > $1.lowest }),
-           let index = items.firstIndex(of: item) {
-            let x = transformer.transformX(at: index) + candleStyle.width * 0.5
+        if let item = visibleItems.max(by: { $0.lowest > $1.lowest }),
+           let index = visibleItems.firstIndex(of: item) {
+            let x = transformer.viewPortMinX(at: index) + candleStyle.width * 0.5
             let y = transformer.transformY(value: item.lowest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
@@ -147,6 +150,95 @@ struct CandleRenderer: ChartRenderer {
             sublayer.addSublayer(textLayer)
         }
         
-        layer.addSublayer(sublayer)
+        // MARK: - 最新价(悬浮在 layer 之上)
+        if let item = context.items.last {
+            let minY = transformer.transformY(value: context.transformer.dataBounds.max)
+            let maxY = transformer.transformY(value: context.transformer.dataBounds.min)
+            let rect = CGRectMake(0, viewPort.minY, layer.bounds.width, viewPort.height)
+            var y = transformer.transformY(value: item.closing)
+            y = min(max(y, minY), maxY)
+            let index = context.items.count - context.visibleRange.lowerBound - 1
+            var x = transformer.layerMinX(at: index)
+            if x > rect.maxX { x = 0 }
+            let end = CGPoint(x: x, y: y)
+            let start = CGPoint(x: rect.width, y: y)
+            let dashLine = CAShapeLayer()
+            dashLine.strokeColor = UIColor.label.cgColor
+            dashLine.lineWidth = 1 / UIScreen.main.scale
+            dashLine.lineDashPattern = [2, 2]
+            let path = UIBezierPath()
+            path.move(to: start)
+            path.addLine(to: end)
+            dashLine.path = path.cgPath
+            layer.addSublayer(dashLine)
+
+            priceIndicatorView.showArrow = end.x == 0
+            priceIndicatorView.label.text = styleManager.format(value: item.closing)
+            let indicatorSize = priceIndicatorView.systemLayoutSizeFitting(rect.size)
+            priceIndicatorView.bounds.size = indicatorSize
+            priceIndicatorView.frame.origin.y = y - indicatorSize.height * 0.5
+            priceIndicatorView.frame.origin.x = start.x - 12 - indicatorSize.width
+            if priceIndicatorView.superview == nil {
+                context.canvansView.addSubview(priceIndicatorView)
+            }
+        }
+    }
+}
+
+private final class PriceIndicatorView: UIControl {
+    
+    let label = UILabel()
+    
+    private let arrowView = UIImageView(image: UIImage(systemName: "chevron.right"))
+    var showArrow: Bool {
+        get { !arrowView.isHidden }
+        set { arrowView.isHidden = !newValue }
+    }
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        label.textColor = UIColor.label.withAlphaComponent(0.7)
+        label.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        label.textAlignment = .center
+        label.setContentHuggingPriority(.defaultLow + 1, for: .horizontal)
+        
+        arrowView.tintColor = UIColor.label.withAlphaComponent(0.7)
+        
+        layer.borderWidth = 1 / UIScreen.main.scale
+        layer.borderColor = UIColor.separator.cgColor
+        layer.cornerRadius = 4
+        layer.masksToBounds = true
+        
+        let visualEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+        visualEffectView.alpha = 0.9
+        visualEffectView.isUserInteractionEnabled = false
+        addSubview(visualEffectView)
+        visualEffectView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        
+        let stackView = UIStackView(arrangedSubviews: [label, arrowView])
+        stackView.isUserInteractionEnabled = false
+        stackView.axis = .horizontal
+        stackView.alignment = .fill
+        stackView.distribution = .fill
+        stackView.spacing = 2
+        addSubview(stackView)
+        stackView.snp.makeConstraints { make in
+            make.edges.equalTo(UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4))
+        }
+        arrowView.snp.makeConstraints { make in
+            make.size.equalTo(CGSize(width: 5, height: 12))
+        }
+        
+        addTarget(self, action: #selector(Self.onClick), for: .touchUpInside)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func onClick() {
+        NotificationCenter.default.post(name: .scrollToTop, object: nil)
     }
 }

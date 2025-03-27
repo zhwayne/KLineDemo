@@ -18,7 +18,7 @@ struct EMARenderer: IndicatorRenderer {
         let transformer = context.transformer
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
-        let items = context.items
+        let items = context.visibleItems
         
         
         for key in type.keys {
@@ -37,7 +37,7 @@ struct EMARenderer: IndicatorRenderer {
                     continue
                 }
                 // 计算 x 坐标
-                let x = transformer.transformX(at: idx) + candleStyle.width * 0.5
+                let x = transformer.viewPortMinX(at: idx) + candleStyle.width * 0.5
                 let y = transformer.transformY(value: value)
                 let centerX = x
                 let point = CGPoint(x: centerX, y: y)

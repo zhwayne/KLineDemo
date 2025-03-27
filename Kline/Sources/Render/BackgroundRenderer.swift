@@ -18,12 +18,14 @@ struct BackgroundRenderer: ChartRenderer {
         let sublayer = CALayer()
         sublayer.frame = rect
         sublayer.contentsScale = UIScreen.main.scale
+        layer.addSublayer(sublayer)
         
         let gridLayer = CAShapeLayer()
         gridLayer.lineWidth = 1 / UIScreen.main.scale
         gridLayer.fillColor = UIColor.clear.cgColor
-        gridLayer.strokeColor = UIColor.secondarySystemFill.cgColor
+        gridLayer.strokeColor = UIColor.systemFill.cgColor
         gridLayer.contentsScale = UIScreen.main.scale
+        sublayer.addSublayer(gridLayer)
         
         let gridColumns = 6
         let columnWidth = rect.width / CGFloat(gridColumns - 1)
@@ -43,12 +45,14 @@ struct BackgroundRenderer: ChartRenderer {
         // 生成等分价格线
         let dataBounds = transformer.dataBounds
         let (stepSize, _) = calculateGridSteps(
-            min: dataBounds.minimum,
-            max: dataBounds.maximum,
+            min: dataBounds.min,
+            max: dataBounds.max,
             maxLines: 8
         )
+        
+        guard stepSize > 0 else { return }
 
-        var currentValue = floor(dataBounds.minimum / stepSize) * stepSize
+        var currentValue = floor(dataBounds.min / stepSize) * stepSize
         var y: CGFloat = rect.maxY
         while y > 0 {
             defer {
@@ -77,8 +81,6 @@ struct BackgroundRenderer: ChartRenderer {
         }
         
         gridLayer.path = path.cgPath
-        sublayer.addSublayer(gridLayer)
-        layer.addSublayer(sublayer)
     }
     
     // 智能网格步长计算

@@ -18,7 +18,7 @@ struct VOLRenderer: IndicatorRenderer {
         let rect = transformer.viewPort
         let candleStyle = context.styleManager.candleStyle
         let indicatorStyle = context.styleManager.indicatorStyle(for: .vol)
-        let items = context.items
+        let items = context.visibleItems
         
         // MARK: - 网格线（列）
         drawColumnBackground(in: layer, viewPort: transformer.viewPort)
@@ -46,7 +46,7 @@ struct VOLRenderer: IndicatorRenderer {
         // MARK: - 折线图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
-            let x = transformer.transformX(at: idx)
+            let x = transformer.viewPortMinX(at: idx)
             let y = transformer.transformY(value: Double(item.item.volume), inset: verticalInset)
             let rect = CGRect(x: x, y: y, width: candleStyle.width, height: rect.height - y - 2)
             let path = UIBezierPath(rect: rect)
