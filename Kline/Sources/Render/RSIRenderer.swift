@@ -85,7 +85,7 @@ struct RSIRenderer: IndicatorRenderer {
                 let centerX = x
                 let point = CGPoint(x: centerX, y: y)
                 
-                if path.currentPoint == .zero {
+                if idx == 0 {
                     path.move(to: point)
                 } else {
                     path.addLine(to: point)

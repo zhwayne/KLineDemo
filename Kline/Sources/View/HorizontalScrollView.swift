@@ -46,7 +46,7 @@ final class HorizontalScrollView: UIScrollView {
             target: self,
             action: #selector(Self.handlePinch(_:))
         )
-        addGestureRecognizer(pinch)
+        contentView.addGestureRecognizer(pinch)
     }
     
     required init?(coder: NSCoder) {

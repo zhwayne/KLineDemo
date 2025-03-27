@@ -32,6 +32,7 @@ enum ChartSection: Sendable {
     private let backgroundRenderer = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
+    private let longPressRenderer = LongPressRenderer()
     private var mainRenderers: [AnyIndicatorRenderer] = []
     private var subRenderers: [AnyIndicatorRenderer] = []
     
@@ -49,12 +50,31 @@ enum ChartSection: Sendable {
         self.styleManager = styleManager
         scrollView = HorizontalScrollView(styleManager: styleManager)
         indicatorTypeView = IndicatorTypeView(
+            /* 这个地方应该开放接口，让调用方决定启用哪些指标 */
             mainIndicators: [.vol, .ma, .ema],
             subIndicators: [.vol, .rsi]
         )
         
         super.init(frame: .zero)
         scrollView.delegate = self
+        // tap
+        let tap = UITapGestureRecognizer(
+            target: self,
+            action: #selector(Self.handleTap(_:))
+        )
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        scrollView.contentView.addGestureRecognizer(tap)
+        // long press
+        let longPress = UILongPressGestureRecognizer(
+            target: self,
+            action: #selector(Self.handleLongPress(_:))
+        )
+        longPress.minimumPressDuration = 0.3
+        longPress.allowableMovement = 2
+        longPress.cancelsTouchesInView = false
+        longPress.delegate = self
+        scrollView.contentView.addGestureRecognizer(longPress)
         
         candleView.layer.masksToBounds = true
         timelineView.layer.masksToBounds = true
@@ -448,5 +468,48 @@ extension KLineView: UIScrollViewDelegate {
         if scrollView === self.scrollView {
             drawVisibleContent()
         }
+    }
+}
+
+extension KLineView: UIGestureRecognizerDelegate {
+    
+    @objc private func handleTap(_ tap: UITapGestureRecognizer) {
+        handleTapHandleLongPressGesture(tap)
+    }
+
+    @objc private func handleLongPress(_ longPress: UILongPressGestureRecognizer) {
+        switch longPress.state {
+        case .began, .changed:
+            handleTapHandleLongPressGesture(longPress)
+        default: break
+        }
+    }
+    
+    private func handleTapHandleLongPressGesture(_ gesture: UIGestureRecognizer) {
+        // MARK: - 绘制长按图层
+        guard let view = gesture.view else { return }
+        
+        let location = gesture.location(in: view)
+        // 判断当前是在哪个区域
+        if candleView.frame.contains(location) {
+            // 主图区域
+            print("main")
+        } else if timelineView.frame.contains(location) {
+            // 时间轴区域
+            print("timeline")
+        } else if subIndicatorView.frame.contains(location) {
+            // 幅图区域
+            print("sub")
+        } else {
+            // 超出可视区域
+            print("out of bounds")
+        }
+    }
+    
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        if touch.view is UIControl {
+            return false
+        }
+        return true
     }
 }
