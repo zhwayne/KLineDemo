@@ -7,19 +7,23 @@
 
 import UIKit
 
-class CandleRenderer: ChartRenderer {
+final class CandleRenderer: ChartRenderer {
+    
+    var styleManager: StyleManager { .shared }
+        
+    var transformer: Transformer?
+    
+    weak var view: UIView?
     
     typealias Item = KLineItem
-    typealias Style = CandleStyle
     
     private let priceIndicatorView = PriceIndicatorView()
     
-    func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
-        let transformer = context.transformer
+    func draw(in layer: CALayer, data: RenderData<KLineItem>) {
+        guard let transformer = transformer else { return }
         let viewPort = transformer.viewPort
-        let styleManager = context.styleManager
-        let candleStyle = context.styleManager.candleStyle
-        let visibleItems = context.visibleItems
+        let candleStyle = styleManager.candleStyle
+        let visibleItems = data.visibleItems
         let sublayer = CALayer()
         sublayer.frame = viewPort
         sublayer.contentsScale = UIScreen.main.scale
@@ -42,11 +46,11 @@ class CandleRenderer: ChartRenderer {
         // MARK: - 蜡烛图
         for (idx, item) in visibleItems.enumerated() {
             // 计算 x 坐标
-            let x = transformer.viewPortMinX(at: idx)
+            let x = transformer.xAxis(at: idx)
             
             // 计算开盘价和收盘价的 y 坐标
-            let openY = transformer.transformY(value: item.opening)
-            let closeY = transformer.transformY(value: item.closing)
+            let openY = transformer.yAxis(for: item.opening)
+            let closeY = transformer.yAxis(for: item.closing)
             let y = min(openY, closeY)
             let h = abs(openY - closeY)
             
@@ -54,8 +58,8 @@ class CandleRenderer: ChartRenderer {
             let path = UIBezierPath(rect: rect)
             
             // 计算最高价和最低价的 y 坐标
-            let highY = transformer.transformY(value: item.highest)
-            let lowY = transformer.transformY(value: item.lowest)
+            let highY = transformer.yAxis(for: item.highest)
+            let lowY = transformer.yAxis(for: item.lowest)
             
             let centerX = candleStyle.width / 2 + x
             let highestPoint = CGPoint(x: centerX, y: highY)
@@ -79,8 +83,8 @@ class CandleRenderer: ChartRenderer {
         // MARK: - 最高价指示
         if let item = visibleItems.max(by: { $0.highest < $1.highest }),
            let index = visibleItems.firstIndex(of: item) {
-            let x = transformer.viewPortMinX(at: index) + candleStyle.width * 0.5
-            let y = transformer.transformY(value: item.highest)
+            let x = transformer.xAxis(at: index) + candleStyle.width * 0.5
+            let y = transformer.yAxis(for: item.highest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
             let startPoint = CGPoint(x: x, y: y)
@@ -101,7 +105,7 @@ class CandleRenderer: ChartRenderer {
             textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = context.styleManager.format(value: item.highest)
+            textLayer.string = styleManager.format(value: item.highest)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: endPoint.x + (rightSide ? 0 : -textSize.width),
@@ -116,8 +120,8 @@ class CandleRenderer: ChartRenderer {
         // MARK: - 最低价指示
         if let item = visibleItems.max(by: { $0.lowest > $1.lowest }),
            let index = visibleItems.firstIndex(of: item) {
-            let x = transformer.viewPortMinX(at: index) + candleStyle.width * 0.5
-            let y = transformer.transformY(value: item.lowest)
+            let x = transformer.xAxis(at: index) + candleStyle.width * 0.5
+            let y = transformer.yAxis(for: item.lowest)
             
             let rightSide = (x + transformer.viewPort.origin.x) < layer.bounds.midX
             let startPoint = CGPoint(x: x, y: y)
@@ -138,7 +142,7 @@ class CandleRenderer: ChartRenderer {
             textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = context.styleManager.format(value: item.lowest)
+            textLayer.string = styleManager.format(value: item.lowest)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: endPoint.x + (rightSide ? 0 : -textSize.width),
@@ -151,14 +155,14 @@ class CandleRenderer: ChartRenderer {
         }
         
         // MARK: - 最新价(悬浮在 layer 之上)
-        if let item = context.items.last {
-            let minY = transformer.transformY(value: context.transformer.dataBounds.max)
-            let maxY = transformer.transformY(value: context.transformer.dataBounds.min)
+        if let item = data.items.last {
+            let minY = transformer.yAxis(for: transformer.dataBounds.max)
+            let maxY = transformer.yAxis(for: transformer.dataBounds.min)
             let rect = CGRectMake(0, viewPort.minY, layer.bounds.width, viewPort.height)
-            var y = transformer.transformY(value: item.closing)
+            var y = transformer.yAxis(for: item.closing)
             y = min(max(y, minY), maxY)
-            let index = context.items.count - context.visibleRange.lowerBound - 1
-            var x = transformer.layerMinX(at: index)
+            let index = data.items.count - data.visibleRange.lowerBound - 1
+            var x = transformer.xAxisInLayer(at: index)
             if x > rect.maxX { x = 0 }
             let end = CGPoint(x: x, y: y)
             let start = CGPoint(x: rect.width, y: y)
@@ -178,8 +182,8 @@ class CandleRenderer: ChartRenderer {
             priceIndicatorView.bounds.size = indicatorSize
             priceIndicatorView.frame.origin.y = y - indicatorSize.height * 0.5
             priceIndicatorView.frame.origin.x = start.x - 12 - indicatorSize.width
-            if priceIndicatorView.superview == nil {
-                context.canvansView.addSubview(priceIndicatorView)
+            if priceIndicatorView.superview == nil, let view {
+                view.addSubview(priceIndicatorView)
             }
         }
     }

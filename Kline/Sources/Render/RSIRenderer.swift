@@ -7,20 +7,23 @@
 
 import UIKit
 
-struct RSIRenderer: IndicatorRenderer {
+final class RSIRenderer: IndicatorRenderer {
+    
+    var styleManager: StyleManager { .shared }
+        
+    var transformer: Transformer?
     
     typealias Item = IndicatorData
         
     var type: IndicatorType { .rsi }
     
-    func draw(in layer: CALayer, context: RenderContext<IndicatorData>) {
-        var transformer = context.transformer
+    func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
+        guard var transformer = transformer else { return }
         transformer.dataBounds.combine(other: .init(max: 70, min: 30))
         
         let rect = transformer.viewPort
-        let styleManager = context.styleManager
-        let candleStyle = context.styleManager.candleStyle
-        let items = context.visibleItems
+        let candleStyle = styleManager.candleStyle
+        let visibleItems = data.visibleItems
         
         let sublayer = CALayer()
         sublayer.frame = rect
@@ -32,7 +35,7 @@ struct RSIRenderer: IndicatorRenderer {
        
         // MARK: - 标题
         let attrText = NSMutableAttributedString()
-        let indicatorData = items.last!
+        let indicatorData = visibleItems.last!
         let textLayer = CATextLayer()
         textLayer.alignmentMode = .center
         textLayer.contentsScale = UIScreen.main.scale
@@ -40,8 +43,8 @@ struct RSIRenderer: IndicatorRenderer {
         
         for key in type.keys {
             var number: Double = 0
-            if let value = indicatorData.getIndicator(forKey: key) {
-                number = NSDecimalNumber(string: "\(value)").doubleValue
+            if let value = indicatorData.indicator(forKey: key) {
+                number = value.doubeValue
             }
             let indicatorStyle = styleManager.indicatorStyle(for: key)
             let paragraphStyle = NSMutableParagraphStyle()
@@ -74,19 +77,19 @@ struct RSIRenderer: IndicatorRenderer {
             lineLayer.strokeColor = indicatorStyle.strokeColor.cgColor
             
             let path = UIBezierPath()
-            
-            for (idx, item) in items.enumerated() {
-                guard let value = item.getIndicator(forKey: key) as? Double else {
+            var hasStartPoint = false
+            for (idx, item) in visibleItems.enumerated() {
+                guard let value = item.indicator(forKey: key)?.doubeValue else {
                     continue
                 }
                 // 计算 x 坐标
-                let x = transformer.viewPortMinX(at: idx) + candleStyle.width * 0.5
-                let y = transformer.transformY(value: value, inset: verticalInset)
-                let centerX = x
-                let point = CGPoint(x: centerX, y: y)
+                let x = transformer.xAxis(at: idx) + candleStyle.width * 0.5
+                let y = transformer.yAxis(for: value, inset: verticalInset)
+                let point = CGPoint(x: x, y: y)
                 
-                if idx == 0 {
+                if !hasStartPoint {
                     path.move(to: point)
+                    hasStartPoint = true
                 } else {
                     path.addLine(to: point)
                 }
@@ -98,9 +101,9 @@ struct RSIRenderer: IndicatorRenderer {
         }
         
         // MARK: - 超买和超卖区域
-        let oby = transformer.transformY(value: 70, inset: verticalInset)
-        let osy = transformer.transformY(value: 30, inset: verticalInset)
-        let maxX = transformer.viewPortMinX(at: items.count - 1) + candleStyle.width * 0.5
+        let oby = transformer.yAxis(for: 70, inset: verticalInset)
+        let osy = transformer.yAxis(for: 30, inset: verticalInset)
+        let maxX = transformer.xAxis(at: visibleItems.count - 1) + candleStyle.width * 0.5
         let overRect = CGRect(x: 0, y: oby, width: maxX, height: osy - oby)
         let overAreaShape = CAShapeLayer()
         overAreaShape.fillColor = UIColor.systemBlue.withAlphaComponent(0.1).cgColor

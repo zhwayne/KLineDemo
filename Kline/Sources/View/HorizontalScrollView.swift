@@ -20,7 +20,7 @@ final class HorizontalScrollView: UIScrollView {
     }
     
     // 样式管理器
-    private let styleManager: StyleManager
+    private var styleManager: StyleManager { .shared }
     private var candleStyle: CandleStyle { styleManager.candleStyle }
     
     let contentView = ContentView()
@@ -29,9 +29,8 @@ final class HorizontalScrollView: UIScrollView {
     private var pinchCenterX: CGFloat = 0
     private var oldScale: CGFloat = 1
     
-    required init(styleManager: StyleManager) {
-        self.styleManager = styleManager
-        super.init(frame: .zero)
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         alwaysBounceHorizontal = true
         showsVerticalScrollIndicator = false
         showsHorizontalScrollIndicator = false

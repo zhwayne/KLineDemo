@@ -7,24 +7,42 @@
 
 import UIKit
 
-struct RenderContext<T> {
-    let transformer: Transformer
+/// 渲染数据
+@dynamicMemberLookup
+struct RenderData<T> {
     let items: [T]
     let visibleRange: Range<Int>
     let indices: Range<Int>
-    let styleManager: StyleManager
-    let canvansView: UIView
     
+    init(items: [T], visibleRange: Range<Int>, indices: Range<Int>) {
+        self.items = items
+        self.visibleRange = visibleRange
+        self.indices = indices
+    }
+
     var visibleItems: [T] { Array(items[visibleRange]) }
     var itemType: Any.Type { T.self } // 直接反射泛型类型
+    
+    // 动态属性存储
+    private var dynamicProperties: [String: Any] = [:]
+    
+    // 动态成员下标
+    subscript<U>(dynamicMember key: String) -> U? {
+        get { dynamicProperties[key] as? U }
+        set { dynamicProperties[key] = newValue }
+    }
 }
 
-/// 定义绘制器协议 ChartRenderer，每种 Renderer 单独负责一种绘制任务，KLineView 通过聚合多个 Renderer 来实现多种绘制效果。
-@MainActor protocol ChartRenderer {
+
+/// 定义绘制器协议 ChartRenderer，每种 Renderer 单独负责一种绘制任务，KLineView 通过聚
+/// 合多个 Renderer 来实现多种绘制效果。
+@MainActor protocol ChartRenderer: AnyObject {
     
     associatedtype Item
+                
+    var transformer: Transformer? { get set }
     
-    func draw(in layer: CALayer, context: RenderContext<Item>)
+    func draw(in layer: CALayer, data: RenderData<Item>)
 }
 
 extension ChartRenderer {

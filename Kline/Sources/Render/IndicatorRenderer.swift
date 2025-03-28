@@ -13,31 +13,35 @@ protocol IndicatorRenderer: ChartRenderer {
 }
 
 
-struct AnyIndicatorRenderer: IndicatorRenderer {
-    let type: IndicatorType
+final class AnyIndicatorRenderer: IndicatorRenderer {
+            
+    var transformer: Transformer? {
+        get { base.transformer }
+        set { base.transformer = newValue }
+    }
     
-    private let _draw: (CALayer, RenderContext<Any>) -> Void
+    var type: IndicatorType { base.type }
+    
+    private var base: any IndicatorRenderer
+    private let _draw: (CALayer, RenderData<Any>) -> Void
     
     fileprivate init<R: IndicatorRenderer>(_ renderer: R) {
-        self.type = renderer.type
-        self._draw = { layer, context in
-            guard let items = context.items as? [R.Item] else {
-                fatalError("Type mismatch. Expected: \(R.Item.self), Actual: \(context.itemType)")
+        base = renderer
+        _draw = { [unowned renderer] layer, data in
+            guard let items = data.items as? [R.Item] else {
+                fatalError("Type mismatch. Expected: \(R.Item.self), Actual: \(data.itemType)")
             }
-            let concreteContext = RenderContext(
-                transformer: context.transformer,
+            let concreteData = RenderData(
                 items: items,
-                visibleRange: context.visibleRange,
-                indices: context.indices,
-                styleManager: context.styleManager,
-                canvansView: context.canvansView
+                visibleRange: data.visibleRange,
+                indices: data.indices
             )
-            renderer.draw(in: layer, context: concreteContext)
+            renderer.draw(in: layer, data: concreteData)
         }
     }
     
-    func draw(in layer: CALayer, context: RenderContext<Any>) {
-        _draw(layer, context)
+    func draw(in layer: CALayer, data: RenderData<Any>) {
+        _draw(layer, data)
     }
 }
 

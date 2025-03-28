@@ -7,11 +7,16 @@
 
 import UIKit
 
-struct BackgroundRenderer: ChartRenderer {
-    typealias Item = KLineItem
+final class BackgroundRenderer: ChartRenderer {
     
-    func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
-        let transformer = context.transformer
+    var styleManager: StyleManager { .shared }
+    
+    var transformer: Transformer?
+    
+    typealias Item = KLineItem
+
+    func draw(in layer: CALayer, data: RenderData<KLineItem>) {
+        guard let transformer = transformer else { return }
         let viewPort = transformer.viewPort
         let rect = CGRectMake(0, viewPort.minY, layer.bounds.width, viewPort.height)
         
@@ -58,7 +63,7 @@ struct BackgroundRenderer: ChartRenderer {
             defer {
                 currentValue += stepSize
             }
-            y = transformer.transformY(value: currentValue)
+            y = transformer.yAxis(for: currentValue)
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: rect.width, y: y))
             
@@ -69,7 +74,7 @@ struct BackgroundRenderer: ChartRenderer {
             textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
-            textLayer.string = context.styleManager.format(value: currentValue)
+            textLayer.string = styleManager.format(value: currentValue)
             let textSize = textLayer.preferredFrameSize()
             let textOrigin = CGPoint(
                 x: rect.width - 12 - textSize.width,

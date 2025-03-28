@@ -24,17 +24,16 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
         erasePublisher.eraseToAnyPublisher()
     }
     
-    let mainIndicators: [IndicatorType]
-    let subIndicators: [IndicatorType]
+    var mainIndicators: [IndicatorType] = [] { didSet { reloadData() } }
+    var subIndicators: [IndicatorType] = [] { didSet { reloadData() } }
+    
     private let drawPublisher = PassthroughSubject<(ChartSection, IndicatorType), Never>()
     private let erasePublisher = PassthroughSubject<(ChartSection, IndicatorType), Never>()
     private var collectionView: UICollectionView!
     private var dataSource: UICollectionViewDiffableDataSource<Int, SectionItem>!
     
-    required init(mainIndicators: [IndicatorType], subIndicators: [IndicatorType]) {
-        self.mainIndicators = mainIndicators
-        self.subIndicators = subIndicators
-        super.init(frame: .zero)
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         let layout = makeLayout()
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
@@ -44,7 +43,7 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
         collectionView.delegate = self
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         setupIndicatorListDataSource()
-        
+        reloadData()
         addSubview(collectionView)
     }
     
@@ -90,7 +89,9 @@ final class IndicatorTypeView: UIView, UICollectionViewDelegate {
                 return collectionView.dequeueReusableCell(withReuseIdentifier: "separator", for: indexPath)
             }
         })
-        
+    }
+    
+    private func reloadData() {
         // 配置主图指标
         var snapshot = NSDiffableDataSourceSnapshot<Int, SectionItem>()
         snapshot.appendSections([0])

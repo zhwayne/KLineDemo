@@ -12,7 +12,7 @@ import KLine
 
 class ViewController: UIViewController {
     
-    private let chartView = KLineView(styleManager: StyleManager())
+    private let chartView = KLineView()
         
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,24 +24,7 @@ class ViewController: UIViewController {
             make.left.right.equalTo(view.safeAreaLayoutGuide)
             make.top.equalTo(view.safeAreaLayoutGuide.snp.top).offset(64)
         }
-//        
-//        let config = WebSocketClient.Configuration(url: URL(string: "wss://npush.bibox360.com")!)
-//        client = WebSocketClient(config: config)
-//        
-//        Task {
-//            for await message in client.messages {
-//                print(message)
-//            }
-//        }
-//        Task {
-//            do {
-//                try await client.connect()
-//            } catch {
-//                print(error)
-//            }
-//        }
-//        
-        
+
         // 解析 plist
         let filePath = Bundle.main.path(forResource: "kline", ofType: "plist")!
         let data = NSDictionary(contentsOfFile: filePath)!

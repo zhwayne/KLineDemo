@@ -54,13 +54,8 @@ extension Collection where Element == IndicatorData {
     func bounds(for key: IndicatorKey) -> MetricBounds? {
         // 提取特定指标的所有非 nil 值，并尝试转换为 Double
         let indicatorValues: [Double] = self.compactMap { data in
-            if let value = data.getIndicator(forKey: key) {
-                if let value = value as? Double {
-                    return value
-                } else if let value = value as? Int {
-                    return Double(value)
-                }
-                return nil
+            if let value = data.indicator(forKey: key) {
+                return value.doubeValue
             }
             return nil
         }

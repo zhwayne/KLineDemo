@@ -15,14 +15,16 @@ enum ChartSection: Sendable {
 
 @MainActor public final class KLineView: UIView {
 
+    // MARK: - Views
     private let chartView = UIView()
-    private let scrollView: HorizontalScrollView
-    private let candleView = CanvansView()
-    private let timelineView = CanvansView()
+    private let scrollView = HorizontalScrollView()
+    private let candleView = CanvasView()
     private let legendLabel = UILabel()
-    private let indicatorTypeView: IndicatorTypeView
-    private let subIndicatorView = CanvansView()
+    private let timelineView = CanvasView()
+    private let subIndicatorView = CanvasView()
+    private var indicatorTypeView = IndicatorTypeView()
     
+    // MARK: - Height defines
     private let candleHeight: CGFloat = 320
     private let timelineHeight: CGFloat = 16
     private let indicatorTypeHeight: CGFloat = 32
@@ -32,50 +34,30 @@ enum ChartSection: Sendable {
     private let backgroundRenderer = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
-    private let longPressRenderer = LongPressRenderer()
+    private let longPressRengerer = LongPressRenderer()
     private var mainRenderers: [AnyIndicatorRenderer] = []
     private var subRenderers: [AnyIndicatorRenderer] = []
     
+    // MARK: - Data
     private var mainIndicatorTypes: [IndicatorType] = []
     private var subIndicatorTypes: [IndicatorType] = []
-    private let styleManager: StyleManager
-    
-    private var indicatorDatas: [IndicatorData] = []
     private var kLineItems: [KLineItem] = []
+    private var indicatorDatas: [IndicatorData] = []
     private var calculators: [any IndicatorCalculator] = []
+    private var styleManager: StyleManager { .shared }
     
     private var disposeBag = Set<AnyCancellable>()
     
-    public required init(styleManager: StyleManager) {
-        self.styleManager = styleManager
-        scrollView = HorizontalScrollView(styleManager: styleManager)
-        indicatorTypeView = IndicatorTypeView(
-            /* 这个地方应该开放接口，让调用方决定启用哪些指标 */
-            mainIndicators: [.vol, .ma, .ema],
-            subIndicators: [.vol, .rsi]
-        )
+    // MARK: - Initializers
+    public override init(frame: CGRect) {
+        super.init(frame: frame)
         
-        super.init(frame: .zero)
+        
+        /* 这个地方应该开放接口，让调用方决定启用哪些指标 */
+        indicatorTypeView.mainIndicators = [.vol, .ma, .ema]
+        indicatorTypeView.subIndicators = [.vol, .rsi]
+        
         scrollView.delegate = self
-        // tap
-        let tap = UITapGestureRecognizer(
-            target: self,
-            action: #selector(Self.handleTap(_:))
-        )
-        tap.cancelsTouchesInView = false
-        tap.delegate = self
-        scrollView.contentView.addGestureRecognizer(tap)
-        // long press
-        let longPress = UILongPressGestureRecognizer(
-            target: self,
-            action: #selector(Self.handleLongPress(_:))
-        )
-        longPress.minimumPressDuration = 0.3
-        longPress.allowableMovement = 2
-        longPress.cancelsTouchesInView = false
-        longPress.delegate = self
-        scrollView.contentView.addGestureRecognizer(longPress)
-        
         candleView.layer.masksToBounds = true
         timelineView.layer.masksToBounds = true
         subIndicatorView.layer.masksToBounds = true
@@ -126,6 +108,26 @@ enum ChartSection: Sendable {
             make.top.equalTo(8)
         }
 
+        // 添加手势
+        // tap
+        let tap = UITapGestureRecognizer(
+            target: self,
+            action: #selector(Self.handleTap(_:))
+        )
+        tap.cancelsTouchesInView = false
+        tap.delegate = self
+        scrollView.contentView.addGestureRecognizer(tap)
+        // long press
+        let longPress = UILongPressGestureRecognizer(
+            target: self,
+            action: #selector(Self.handleLongPress(_:))
+        )
+        longPress.minimumPressDuration = 0.3
+        longPress.allowableMovement = 2
+        longPress.cancelsTouchesInView = false
+        longPress.delegate = self
+        scrollView.contentView.addGestureRecognizer(longPress)
+        
         setupBindings()
     }
     
@@ -183,6 +185,7 @@ enum ChartSection: Sendable {
     }
 }
 
+// MARK: - 对外提供的绘制接口
 extension KLineView {
     
     public func draw(items: [KLineItem], scrollPosition: ScrollPosition) {
@@ -204,6 +207,7 @@ extension KLineView {
     }
 }
 
+// MARK: - 绘制和擦除指标
 extension KLineView {
     
     private func drawMainIndicator(type: IndicatorType) async {
@@ -241,6 +245,7 @@ extension KLineView {
     }
 }
 
+// MARK: - 绘制内容
 extension KLineView {
    
     private var visibleItems: ArraySlice<KLineItem> {
@@ -254,15 +259,17 @@ extension KLineView {
     }
     
     private func drawVisibleContent() {
+        guard !kLineItems.isEmpty else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(false)
         CATransaction.setAnimationDuration(0)
         defer {
             CATransaction.commit()
         }
-        candleView.canvans.sublayers = nil
-        timelineView.canvans.sublayers = nil
-        subIndicatorView.canvans.sublayers = nil
+        // 清除绘制内容
+        candleView.clean()
+        timelineView.clean()
+        subIndicatorView.clean()
         
         let visibleRange = scrollView.visibleRange
         let visibleRect = scrollView.frameOfVisibleRangeInConentView
@@ -272,21 +279,21 @@ extension KLineView {
         // MARK: - 绘制主图
         drawMainChartSection(
             in: visibleRect,
-            visibleRange: visibleRange,
+            range: visibleRange,
             indices: indices
         )
         
         // MARK: - 绘制时间轴
         drawTimeline(
             in: visibleRect,
-            visibleRange: visibleRange,
+            range: visibleRange,
             indices: indices
         )
         
         // MARK: - 绘制副图
         drawSubChartSection(
             in: visibleRect,
-            visibleRange: visibleRange,
+            range: visibleRange,
             indices: indices
         )
     }
@@ -294,10 +301,9 @@ extension KLineView {
     /// 绘制主图区域内的所有内容，包括图例，背景，蜡烛图，主图指标。
     private func drawMainChartSection(
         in visibleRect: CGRect,
-        visibleRange: Range<Int>,
+        range: Range<Int>,
         indices: Range<Int>
     ) {
-        
         // 绘制图例。可以考虑将 legend 渲染方式替换成 ChartRenderer。
         legendLabel.attributedText = legendText(for: mainIndicatorTypes)
         let legendSize = legendLabel.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
@@ -307,7 +313,6 @@ extension KLineView {
         }
         
         let candleInset = AxisInset(top: offsetY, bottom: 16)
-        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
         let rect = CGRect(
             x: visibleRect.minX,
             y: 0,
@@ -317,7 +322,6 @@ extension KLineView {
         
         // 获取可见区域内数据的 metricBounds
         var dataBounds = visibleItems.priceBounds
-        
         mainRenderers.forEach { renderer in
             renderer.type.keys.forEach { key in
                 if let indicatorMetricBounds = visibleDatas.bounds(for: key) {
@@ -326,104 +330,101 @@ extension KLineView {
             }
         }
         
-        let candleTransform = ChartTransformer(
-            inset: candleInset,
+        let transformer = Transformer(
+            contentInset: candleInset,
             dataBounds: dataBounds,
-            itemWidth: itemWidth,
-            viewPort: rect
+            viewPort: rect,
+            itemCount: kLineItems.count,
+            visibleRange: range,
+            indices: indices
         )
-        let itemCtx = RenderContext(
-            transformer: candleTransform,
+        let itemRenderData = RenderData(
             items: kLineItems,
-            visibleRange: visibleRange,
-            indices: scrollView.indices,
-            styleManager: styleManager,
-            canvansView: candleView
+            visibleRange: range,
+            indices: indices
         )
-        let dataCtx: RenderContext<Any> = RenderContext(
-            transformer: candleTransform,
-            items: indicatorDatas,
-            visibleRange: visibleRange,
-            indices: indices,
-            styleManager: styleManager,
-            canvansView: candleView
+        let indicatorRenderData = RenderData(
+            items: indicatorDatas as [Any],
+            visibleRange: range,
+            indices: indices
         )
         
         // 蜡烛图背景
-        backgroundRenderer.draw(in: candleView.canvans, context: itemCtx)
+        backgroundRenderer.transformer = transformer
+        backgroundRenderer.draw(in: candleView.canvas, data: itemRenderData)
         
         // 蜡烛图
-        candleRenderer.draw(in: candleView.canvans, context: itemCtx)
+        candleRenderer.transformer = transformer
+        candleRenderer.view = candleView
+        candleRenderer.draw(in: candleView.canvas, data: itemRenderData)
         
         // 主图指标
         mainRenderers.forEach { renderer in
-            renderer.draw(in: candleView.canvans, context: dataCtx)
+            renderer.transformer = transformer
+            renderer.draw(in: candleView.canvas, data: indicatorRenderData)
         }
     }
     
     /// 绘制时间轴
-    private func drawTimeline(
-        in visibleRect: CGRect,
-        visibleRange: Range<Int>,
-        indices: Range<Int>
-    ) {
-        let rect = CGRect(
-            x: visibleRect.minX,
-            y: 0,
-            width: visibleRect.width,
+    private func drawTimeline(in rect: CGRect, range: Range<Int>, indices: Range<Int>) {
+        // 指标数据在 layer 中的可见区域
+        let viewPort = CGRect(
+            x: rect.minX, y: 0,
+            width: rect.width,
             height: timelineHeight
         )
-        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
-        
-        let transformer = ChartTransformer(
+        // 创建一个新的 transformer
+        let transformer = Transformer(
             dataBounds: .zero,
-            itemWidth: itemWidth,
-            viewPort: rect
+            viewPort: viewPort,
+            itemCount: kLineItems.count,
+            visibleRange: range,
+            indices: indices
         )
-        let itemCtx = RenderContext(
-            transformer: transformer,
+        // 创建一个新的 RenderData
+        let renderData = RenderData(
             items: kLineItems,
-            visibleRange: visibleRange,
-            indices: indices,
-            styleManager: styleManager,
-            canvansView: timelineView
+            visibleRange: range,
+            indices: indices
         )
-        timelineRenderer.draw(in: timelineView.canvans, context: itemCtx)
+        // 绘制时间轴
+        timelineRenderer.transformer = transformer
+        timelineRenderer.draw(in: timelineView.canvas, data: renderData)
     }
     
-    private func drawSubChartSection(
-        in visibleRect: CGRect,
-        visibleRange: Range<Int>,
-        indices: Range<Int>
-    ) {
-        let itemWidth = styleManager.candleStyle.width + styleManager.candleStyle.gap
+    private func drawSubChartSection(in rect: CGRect, range: Range<Int>, indices: Range<Int>) {
         for (idx, renderer) in subRenderers.enumerated() {
-            let indicatorRect = CGRect(
-                x: visibleRect.minX,
-                y: CGFloat(idx) * indicatorHeight,
-                width: visibleRect.width,
-                height: indicatorHeight
-            )
+            // 获取可见区域内数据的 metricBounds
             var dataBounds = MetricBounds.zero
             renderer.type.keys.forEach { key in
                 if let indicatorMetricBounds = visibleDatas.bounds(for: key) {
                     dataBounds.combine(other: indicatorMetricBounds)
                 }
             }
-            let transformer = ChartTransformer(
+            // 指标数据在 layer 中的可见区域
+            let viewPort = CGRect(
+                x: rect.minX,
+                y: CGFloat(idx) * indicatorHeight,
+                width: rect.width,
+                height: indicatorHeight
+            )
+            // 创建一个新的 transformer
+            let transformer = Transformer(
                 dataBounds: dataBounds,
-                itemWidth: itemWidth,
-                viewPort: indicatorRect
+                viewPort: viewPort,
+                itemCount: indicatorDatas.count,
+                visibleRange: range,
+                indices: indices
             )
-            let dataCtx: RenderContext<Any> = RenderContext(
-                transformer: transformer,
+            // 创建一个新的 RenderData
+            let renderData: RenderData<Any> = RenderData(
                 items: indicatorDatas,
-                visibleRange: visibleRange,
-                indices: indices,
-                styleManager: styleManager,
-                canvansView: subIndicatorView
+                visibleRange: range,
+                indices: indices
             )
-            renderer.draw(in: subIndicatorView.canvans, context: dataCtx)
+            // 绘制指标
+            renderer.transformer = transformer
+            renderer.draw(in: subIndicatorView.canvas, data: renderData)
         }
     }
     
@@ -437,8 +438,8 @@ extension KLineView {
             let text = NSMutableAttributedString()
             for key in type.keys {
                 var number: Double = 0
-                if let value = indicatorData.getIndicator(forKey: key) {
-                    number = NSDecimalNumber(string: "\(value)").doubleValue
+                if let value = indicatorData.indicator(forKey: key) {
+                    number = value.doubeValue
                 }
                 let indicatorStyle = styleManager.indicatorStyle(for: key)
                 let paragraphStyle = NSMutableParagraphStyle()
@@ -467,10 +468,15 @@ extension KLineView: UIScrollViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
             drawVisibleContent()
+            if longPressRengerer.layer.superlayer != nil {
+                longPressRengerer.layer.sublayers = nil
+                longPressRengerer.layer.removeFromSuperlayer()
+            }
         }
     }
 }
 
+// MARK: - 手势处理
 extension KLineView: UIGestureRecognizerDelegate {
     
     @objc private func handleTap(_ tap: UITapGestureRecognizer) {
@@ -489,21 +495,47 @@ extension KLineView: UIGestureRecognizerDelegate {
         // MARK: - 绘制长按图层
         guard let view = gesture.view else { return }
         
-        let location = gesture.location(in: view)
+        CATransaction.begin()
+        CATransaction.setDisableActions(false)
+        CATransaction.setAnimationDuration(0)
+        defer {
+            CATransaction.commit()
+        }
+        
+        var location = gesture.location(in: view)
+        location.y = min(max(0, location.y), view.bounds.height - 1)
+        
+        var transformer: Transformer?
         // 判断当前是在哪个区域
         if candleView.frame.contains(location) {
             // 主图区域
-            print("main")
+            transformer = candleRenderer.transformer
         } else if timelineView.frame.contains(location) {
             // 时间轴区域
-            print("timeline")
-        } else if subIndicatorView.frame.contains(location) {
-            // 幅图区域
-            print("sub")
-        } else {
-            // 超出可视区域
-            print("out of bounds")
+            transformer = timelineRenderer.transformer
+        } else if !subRenderers.isEmpty {
+            // 计算当前在副图区域的哪个指标上
+            let offsetY = location.y - subIndicatorView.frame.minY
+            let idx = min(Int(ceil(offsetY / indicatorHeight)), subRenderers.count - 1)
+            let renderer = subRenderers[idx]
+            transformer = renderer.transformer
         }
+        
+        guard let transformer = transformer else { return }
+        
+        longPressRengerer.transformer = transformer
+        longPressRengerer.layer.frame = chartView.bounds
+        longPressRengerer.layer.sublayers = nil
+        if longPressRengerer.layer.superlayer == nil {
+            chartView.layer.addSublayer(longPressRengerer.layer)
+        }
+        var data = RenderData(
+            items: indicatorDatas,
+            visibleRange: scrollView.visibleRange,
+            indices: scrollView.indices
+        )
+        data.gestureLocation = location
+        longPressRengerer.draw(in: longPressRengerer.layer, data: data)
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
@@ -511,5 +543,60 @@ extension KLineView: UIGestureRecognizerDelegate {
             return false
         }
         return true
+    }
+}
+
+final class LongPressRenderer: ChartRenderer {
+    
+    let layer = CALayer()
+    
+    private let dateLabel = UILabel()
+    
+    var transformer: Transformer?
+    
+    typealias Item = IndicatorData
+    
+    init() {
+        dateLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        dateLabel.textAlignment = .center
+        dateLabel.backgroundColor = .label
+        dateLabel.textColor = .systemBackground
+        dateLabel.layer.cornerRadius = 4
+        dateLabel.layer.masksToBounds = true
+    }
+    
+    func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
+        guard let transformer = transformer else { return }
+        let rect = layer.bounds
+        
+        // 绘制十字线的y轴，从最顶部一直到最底部
+        let location: CGPoint = data.gestureLocation!
+        
+        // MARK: - 绘制y轴虚线
+        let dashLine = CAShapeLayer()
+        dashLine.strokeColor = UIColor.label.cgColor
+        dashLine.lineWidth = 1 / UIScreen.main.scale
+        dashLine.lineDashPattern = [2, 2]
+        let path = UIBezierPath()
+        path.move(to: CGPoint(x: location.x, y: 0))
+        path.addLine(to: CGPoint(x: location.x, y: rect.height))
+        dashLine.path = path.cgPath
+        layer.addSublayer(dashLine)
+        
+        // MARK: - 绘制日期时间轴
+        if let index = transformer.indexOfVisibleItem(at: location.x) {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy/MM/dd HH:mm"
+            let item = data.items[index].item
+            let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
+            let timeString = dateFormatter.string(from: date)
+            dateLabel.text = timeString
+            var size = dateLabel.systemLayoutSizeFitting(rect.size)
+            size.width += 8
+            var x = location.x - size.width * 0.5
+            x = max(0, min(x, rect.width - size.width))
+            dateLabel.frame = CGRect(x: x, y: 320, width: size.width, height: 16)
+            layer.addSublayer(dateLabel.layer)
+        }
     }
 }

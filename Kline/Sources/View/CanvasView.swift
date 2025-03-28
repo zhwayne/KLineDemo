@@ -7,12 +7,13 @@
 
 import UIKit
 
-final class CanvansView: UIView {
-    let canvans = CALayer()
+final class CanvasView: UIView {
+    
+    let canvas = CALayer()
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        layer.addSublayer(canvans)
+        layer.addSublayer(canvas)
     }
     
     required init?(coder: NSCoder) {
@@ -21,6 +22,10 @@ final class CanvansView: UIView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        canvans.frame = bounds
+        canvas.frame = bounds
+    }
+    
+    func clean() {
+        canvas.sublayers = nil
     }
 }

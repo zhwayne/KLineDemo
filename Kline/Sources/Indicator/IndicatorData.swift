@@ -8,11 +8,16 @@
 import Foundation
 
 protocol IndicatorValue: Sendable {
-    
+    var doubeValue: Double { get }
 }
 
-extension Double: IndicatorValue { }
-extension Int: IndicatorValue { }
+extension Double: IndicatorValue {
+    var doubeValue: Double { self }
+}
+
+extension Int: IndicatorValue {
+    var doubeValue: Double { Double(self) }
+}
 
 /// 将 `KLineItem` 与其计算出的指标关联起来。
 struct IndicatorData: Sendable {
@@ -34,7 +39,7 @@ struct IndicatorData: Sendable {
     ///   - key: 指标键。
     ///   - type: 指标值的类型。
     /// - Returns: 指标值，若不存在或类型不匹配则返回 `nil`。
-    func getIndicator(forKey key: IndicatorKey) -> IndicatorValue? {
+    func indicator(forKey key: IndicatorKey) -> IndicatorValue? {
         return indicators[key]
     }
     

@@ -7,15 +7,33 @@
 
 import UIKit
 
-struct TimelineRenderer: ChartRenderer {
+final class TimelineRenderer: ChartRenderer {
+    
+    var styleManager: StyleManager { .shared }
+        
+    var transformer: Transformer?
+    
+    private let dateLabels: [UILabel]
+    
+    private let dateFormatter = DateFormatter()
     
     typealias Item = KLineItem
     
-    func draw(in layer: CALayer, context: RenderContext<KLineItem>) {
+    init() {
+        dateLabels = (0..<6).map({ idx in
+            let label = UILabel()
+            label.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+            label.textAlignment = .center
+            label.textColor = UIColor.secondaryLabel
+            return label
+        })
+        
+        dateFormatter.dateFormat = "MM/dd HH:mm"
+    }
+   
+    func draw(in layer: CALayer, data: RenderData<KLineItem>) {
+        guard let transformer = transformer else { return }
         let rect = layer.bounds
-        let transformer = context.transformer
-        let items = context.visibleItems
-        let indices = context.indices
         
         let sublayer = CALayer()
         sublayer.frame = rect
@@ -24,39 +42,23 @@ struct TimelineRenderer: ChartRenderer {
         // 时间 label 位置固定
         let labelCount = 6  // 控制标签密度，约 6 个标签
         let labelWidth = rect.width / CGFloat(labelCount - 1)
+       
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MM/dd HH:mm"
-        
-        // 网 items 中塞入 nil，以保证和 indices 元素数量相等
-        var adjustedItems: [KLineItem?] = Array(items)
-        indices.forEach { idx in
-            if idx < 0 {
-                adjustedItems.insert(nil, at: 0)
-            } else if  idx >= items.count {
-                adjustedItems.append(nil)
-            }
-        }
         for idx in (0..<labelCount) {
+            let label = dateLabels[idx]
+            label.bounds = CGRect(x: 0, y: 0, width: labelWidth - 4, height: rect.height)
+            label.center = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
             
-            let textLayer = CATextLayer()
-            textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
-            textLayer.fontSize = 10
-            textLayer.foregroundColor = UIColor.secondaryLabel.cgColor
-            textLayer.alignmentMode = .center
-            textLayer.contentsScale = UIScreen.main.scale
-            sublayer.addSublayer(textLayer)
-            textLayer.bounds = CGRect(x: 0, y: 0, width: labelWidth, height: 11)
-            textLayer.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY - 1)
-            
-            let index = Int(ceil(textLayer.position.x / transformer.itemWidth))
-            if index >= 0 && index < adjustedItems.count, let item = adjustedItems[index] {
+            if let index = transformer.indexOfVisibleItem(at: label.center.x) {
+                let item = data.items[index]
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
                 let timeString = dateFormatter.string(from: date)
-                textLayer.string = timeString
+                label.text = timeString
             } else {
-                textLayer.string = nil
+                label.text = nil
             }
+            
+            layer.addSublayer(label.layer)
         }
         
         let lineHeight = 1 / UIScreen.main.scale

@@ -1,5 +1,5 @@
 //
-//  ChartTransformer.swift
+//  Transformer.swift
 //  KLineDemo
 //
 //  Created by iya on 2024/11/6.
@@ -12,68 +12,74 @@ struct AxisInset {
     let top: CGFloat
     let bottom: CGFloat
     
-    static var zero: AxisInset { .init(top: 0, bottom: 0) }
-}
-
-extension AxisInset {
+    static let zero = AxisInset(top: 0, bottom: 0)
     
     func merge(_ other: AxisInset) -> AxisInset {
-        return AxisInset(top: top + other.top, bottom: bottom + other.bottom)
+        AxisInset(top: top + other.top, bottom: bottom + other.bottom)
     }
 }
 
-protocol Transformer {
-    
-    var dataBounds: MetricBounds { get set }
-    
-    var itemWidth: CGFloat { get }
-    
-    var viewPort: CGRect { get }
-        
-    func viewPortMinX(at index: Int) -> CGFloat
-    
-    func layerMinX(at index: Int) -> CGFloat
-        
-    func transformY(value: Double, inset: AxisInset) -> CGFloat
-}
-
-extension Transformer {
-    
-    func transformY(value: Double) -> CGFloat {
-        return transformY(value: value, inset: .zero)
-    }
-}
-
-struct ChartTransformer: Transformer {
+@MainActor
+struct Transformer {
 
     private let contentInset: AxisInset
     var dataBounds: MetricBounds
-    let itemWidth: CGFloat
     let viewPort: CGRect
+    let itemCount: Int
+    let visibleRange: Range<Int>
+    let indices: Range<Int>
     
-    init(inset: AxisInset = .zero, dataBounds: MetricBounds, itemWidth: CGFloat, viewPort: CGRect) {
-        self.contentInset = inset
+    private var itemWidth: CGFloat { width + gap }
+    private var width: CGFloat { StyleManager.shared.candleStyle.width }
+    private var gap: CGFloat { StyleManager.shared.candleStyle.gap }
+    
+    init(
+        contentInset: AxisInset = .zero,
+        dataBounds: MetricBounds,
+        viewPort: CGRect,
+        itemCount: Int,
+        visibleRange: Range<Int>,
+        indices: Range<Int>
+    ) {
+        self.contentInset = contentInset
         self.dataBounds = dataBounds
-        self.itemWidth = itemWidth
         self.viewPort = viewPort
+        self.itemCount = itemCount
+        self.visibleRange = visibleRange
+        self.indices = indices
     }
     
     /// 将数据索引映射为图表上的 x 坐标。
-    func viewPortMinX(at index: Int) -> CGFloat {
+    func xAxis(at index: Int) -> CGFloat {
         return CGFloat(index) * itemWidth
     }
     
-    func layerMinX(at index: Int) -> CGFloat {
-        viewPortMinX(at: index) + viewPort.minX
+    func xAxisInLayer(at index: Int) -> CGFloat {
+        xAxis(at: index) + viewPort.minX
+    }
+    
+    func indexOfVisibleItem(at x: CGFloat) -> Int? {
+        var index = Int(floor((x - viewPort.minX) / itemWidth))
+        if viewPort.minX <= 0 {
+            index += indices.lowerBound
+        }
+        if visibleRange.contains(index) {
+            return index
+        }
+        return nil
     }
     
     /// 将数据值映射为图表上的 y 坐标。
-    func transformY(value: Double, inset: AxisInset) -> CGFloat {
+    func yAxis(for value: Double, inset: AxisInset) -> CGFloat {
         // 将数据值映射到图表高度上的位置。
         // valueRatio 表示数据值在最小值和最大值之间的归一化比例。
         let valueRatio = CGFloat((value - dataBounds.min) / dataBounds.distance)
         let adjustedInset = contentInset.merge(inset)
         let height = viewPort.height - adjustedInset.top - adjustedInset.bottom
         return adjustedInset.top + (1.0 - valueRatio) * height
+    }
+    
+    func yAxis(for value: Double) -> CGFloat {
+        return yAxis(for: value, inset: .zero)
     }
 }

@@ -38,9 +38,10 @@ public struct CandleStyle {
 }
 
 @MainActor final public class StyleManager {
+    
+    public static let shared = StyleManager()
         
-    public init() {
-    }
+    private init() { }
     
     public var candleStyle = CandleStyle()
     public var priceFractionDigits: Int = 4

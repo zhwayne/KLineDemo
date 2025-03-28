@@ -7,18 +7,22 @@
 
 import UIKit
 
-struct VOLRenderer: IndicatorRenderer {
+final class VOLRenderer: IndicatorRenderer {
+    
+    var styleManager: StyleManager { .shared }
+        
+    var transformer: Transformer?
     
     typealias Item = IndicatorData
     
     var type: IndicatorType { .vol }
-    
-    func draw(in layer: CALayer, context: RenderContext<IndicatorData>) {
-        let transformer = context.transformer
+
+    func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
+        guard let transformer = transformer else { return }
         let rect = transformer.viewPort
-        let candleStyle = context.styleManager.candleStyle
-        let indicatorStyle = context.styleManager.indicatorStyle(for: .vol)
-        let items = context.visibleItems
+        let candleStyle = styleManager.candleStyle
+        let indicatorStyle = styleManager.indicatorStyle(for: .vol)
+        let items = data.visibleItems
         
         // MARK: - 网格线（列）
         drawColumnBackground(in: layer, viewPort: transformer.viewPort)
@@ -36,7 +40,7 @@ struct VOLRenderer: IndicatorRenderer {
         textLayer.contentsScale = UIScreen.main.scale
         sublayer.addSublayer(textLayer)
         let volume = items.last!.item.volume
-        textLayer.string = "VOL:\(context.styleManager.format(value: volume))"
+        textLayer.string = "VOL:\(styleManager.format(value: volume))"
         let size = textLayer.preferredFrameSize()
         textLayer.frame = CGRect(x: 12, y: rect.minY + 8, width: size.width, height: size.height)
         layer.addSublayer(textLayer)
@@ -46,8 +50,8 @@ struct VOLRenderer: IndicatorRenderer {
         // MARK: - 折线图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
-            let x = transformer.viewPortMinX(at: idx)
-            let y = transformer.transformY(value: Double(item.item.volume), inset: verticalInset)
+            let x = transformer.xAxis(at: idx)
+            let y = transformer.yAxis(for: Double(item.item.volume), inset: verticalInset)
             let rect = CGRect(x: x, y: y, width: candleStyle.width, height: rect.height - y - 2)
             let path = UIBezierPath(rect: rect)
             
