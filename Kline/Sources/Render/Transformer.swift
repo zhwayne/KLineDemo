@@ -58,10 +58,13 @@ struct Transformer {
         xAxis(at: index) + viewPort.minX
     }
     
-    func indexOfVisibleItem(at x: CGFloat) -> Int? {
+    func indexOfVisibleItem(at x: CGFloat, extend: Bool = false) -> Int? {
         var index = Int(floor((x - viewPort.minX) / itemWidth))
         if viewPort.minX <= 0 {
             index += indices.lowerBound
+        }
+        if extend {
+            return index
         }
         if visibleRange.contains(index) {
             return index

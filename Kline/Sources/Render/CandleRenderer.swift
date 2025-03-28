@@ -94,13 +94,13 @@ final class CandleRenderer: ChartRenderer {
             
             let lineLayer = CAShapeLayer()
             lineLayer.lineWidth = 1
-            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.7).cgColor
+            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.8).cgColor
             lineLayer.path = linePath.cgPath
             
             let textLayer = CATextLayer()
             textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
             textLayer.fontSize = 10
-            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
+            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.8).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
             textLayer.string = styleManager.format(value: item.highest)
@@ -131,13 +131,13 @@ final class CandleRenderer: ChartRenderer {
             
             let lineLayer = CAShapeLayer()
             lineLayer.lineWidth = 1
-            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.7).cgColor
+            lineLayer.strokeColor = UIColor.label.withAlphaComponent(0.8).cgColor
             lineLayer.path = linePath.cgPath
             
             let textLayer = CATextLayer()
             textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
             textLayer.fontSize = 10
-            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.7).cgColor
+            textLayer.foregroundColor = UIColor.label.withAlphaComponent(0.8).cgColor
             textLayer.alignmentMode = .center
             textLayer.contentsScale = UIScreen.main.scale
             textLayer.string = styleManager.format(value: item.lowest)
@@ -180,7 +180,7 @@ final class CandleRenderer: ChartRenderer {
             priceIndicatorView.bounds.size = indicatorSize
             priceIndicatorView.frame.origin.y = y - indicatorSize.height * 0.5
             priceIndicatorView.frame.origin.x = start.x - 12 - indicatorSize.width
-            if priceIndicatorView.superview == nil, let view = layer.parentView {
+            if priceIndicatorView.superview == nil, let view = layer.owningView {
                 view.addSubview(priceIndicatorView)
             }
         }
@@ -199,12 +199,12 @@ private final class PriceIndicatorView: UIControl {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        label.textColor = UIColor.label.withAlphaComponent(0.7)
+        label.textColor = UIColor.label.withAlphaComponent(0.8)
         label.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
         label.textAlignment = .center
         label.setContentHuggingPriority(.defaultLow + 1, for: .horizontal)
         
-        arrowView.tintColor = UIColor.label.withAlphaComponent(0.7)
+        arrowView.tintColor = UIColor.label.withAlphaComponent(0.8)
         
         layer.borderWidth = 1 / UIScreen.main.scale
         layer.borderColor = UIColor.separator.cgColor

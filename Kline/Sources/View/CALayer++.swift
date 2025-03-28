@@ -9,7 +9,7 @@ import UIKit
 
 extension CALayer {
     
-    var parentView: UIView? {
+    var owningView: UIView? {
         if let view = delegate as? UIView {
             return view
         }

@@ -12,12 +12,10 @@ import UIKit
 struct RenderData<T> {
     let items: [T]
     let visibleRange: Range<Int>
-    let indices: Range<Int>
     
-    init(items: [T], visibleRange: Range<Int>, indices: Range<Int>) {
+    init(items: [T], visibleRange: Range<Int>) {
         self.items = items
         self.visibleRange = visibleRange
-        self.indices = indices
     }
 
     var visibleItems: [T] { Array(items[visibleRange]) }

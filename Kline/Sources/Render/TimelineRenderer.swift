@@ -13,18 +13,20 @@ final class TimelineRenderer: ChartRenderer {
         
     var transformer: Transformer?
     
-    private let dateLabels: [UILabel]
-    
+    private let dateLayers: [CATextLayer]
+    private let lineLayer = CAShapeLayer()
+    private let lineHeight = 1 / UIScreen.main.scale
     private let dateFormatter = DateFormatter()
     
     typealias Item = KLineItem
     
     init() {
-        dateLabels = (0..<6).map({ idx in
-            let label = UILabel()
-            label.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
-            label.textAlignment = .center
-            label.textColor = UIColor.secondaryLabel
+        dateLayers = (0..<6).map({ idx in
+            let label = CATextLayer()
+            label.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
+            label.fontSize = 10
+            label.alignmentMode = .center
+            label.contentsScale = UIScreen.main.scale
             return label
         })
         
@@ -35,46 +37,40 @@ final class TimelineRenderer: ChartRenderer {
         guard let transformer = transformer else { return }
         let rect = layer.bounds
         
-        let sublayer = CALayer()
-        sublayer.frame = rect
-        sublayer.contentsScale = UIScreen.main.scale
-        
         // 时间 label 位置固定
-        let labelCount = 6  // 控制标签密度，约 6 个标签
+        let labelCount = dateLayers.count
         let labelWidth = rect.width / CGFloat(labelCount - 1)
        
-        
         for idx in (0..<labelCount) {
-            let label = dateLabels[idx]
-            label.bounds = CGRect(x: 0, y: 0, width: labelWidth - 4, height: rect.height)
-            label.center = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
+            let label = dateLayers[idx]
+            label.foregroundColor = UIColor.secondaryLabel.cgColor
             
-            if let index = transformer.indexOfVisibleItem(at: label.center.x) {
+            if let index = transformer.indexOfVisibleItem(at: label.position.x) {
                 let item = data.items[index]
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
                 let timeString = dateFormatter.string(from: date)
-                label.text = timeString
+                label.string = timeString
             } else {
-                label.text = nil
+                label.string = nil
             }
             
-            layer.addSublayer(label.layer)
+            let size = label.preferredFrameSize()
+            label.bounds = CGRect(x: 0, y: 0, width: labelWidth - 4, height: size.height)
+            label.position = CGPoint(x: CGFloat(idx) * labelWidth, y: rect.midY)
+            
+            layer.addSublayer(label)
         }
         
-        let lineHeight = 1 / UIScreen.main.scale
         let linePath = UIBezierPath()
         linePath.move(to: CGPoint(x: 0, y: lineHeight))
         linePath.addLine(to: CGPoint(x: rect.maxX, y: lineHeight))
         linePath.move(to: CGPoint(x: 0, y: rect.height - lineHeight))
         linePath.addLine(to: CGPoint(x: rect.maxX, y: rect.height - lineHeight))
-        
-        let lineLayer = CAShapeLayer()
+
         lineLayer.path = linePath.cgPath
         lineLayer.lineWidth = lineHeight
         lineLayer.fillColor = UIColor.clear.cgColor
         lineLayer.strokeColor = UIColor.separator.cgColor
-        sublayer.addSublayer(lineLayer)
-        
-        layer.addSublayer(sublayer)
+        layer.addSublayer(lineLayer)
     }
 }

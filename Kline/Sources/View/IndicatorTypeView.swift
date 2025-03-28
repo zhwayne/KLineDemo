@@ -164,8 +164,8 @@ private class IndicatorCell: UICollectionViewCell {
     override var isSelected: Bool {
         didSet {
             label.textColor = isSelected
-            ? .label.withAlphaComponent(0.7)
-            : .label.withAlphaComponent(0.3)
+            ? .label.withAlphaComponent(0.8)
+            : .systemGray2
         }
     }
 }

@@ -33,8 +33,7 @@ final class AnyIndicatorRenderer: IndicatorRenderer {
             }
             let concreteData = RenderData(
                 items: items,
-                visibleRange: data.visibleRange,
-                indices: data.indices
+                visibleRange: data.visibleRange
             )
             renderer.draw(in: layer, data: concreteData)
         }

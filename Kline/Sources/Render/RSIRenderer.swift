@@ -112,7 +112,7 @@ final class RSIRenderer: IndicatorRenderer {
         sublayer.addSublayer(overAreaShape)
         
         let overDashLine = CAShapeLayer()
-        overDashLine.strokeColor = UIColor.systemBlue.withAlphaComponent(0.7).cgColor
+        overDashLine.strokeColor = UIColor.systemBlue.withAlphaComponent(0.8).cgColor
         overDashLine.lineWidth = 1
         overDashLine.lineDashPattern = [2, 2]
         let overDashLinePath = UIBezierPath()

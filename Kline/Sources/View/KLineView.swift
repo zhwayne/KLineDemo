@@ -51,7 +51,7 @@ enum ChartSection: Sendable {
     // MARK: - Initializers
     public override init(frame: CGRect) {
         super.init(frame: frame)
-        
+        chartView.layer.masksToBounds = true
         
         /* 这个地方应该开放接口，让调用方决定启用哪些指标 */
         indicatorTypeView.mainIndicators = [.vol, .ma, .ema]
@@ -122,7 +122,7 @@ enum ChartSection: Sendable {
             target: self,
             action: #selector(Self.handleLongPress(_:))
         )
-        longPress.minimumPressDuration = 0.3
+        longPress.minimumPressDuration = 0.25
         longPress.allowableMovement = 2
         longPress.cancelsTouchesInView = false
         longPress.delegate = self
@@ -340,13 +340,11 @@ extension KLineView {
         )
         let itemRenderData = RenderData(
             items: kLineItems,
-            visibleRange: range,
-            indices: indices
+            visibleRange: range
         )
         let indicatorRenderData = RenderData(
             items: indicatorDatas as [Any],
-            visibleRange: range,
-            indices: indices
+            visibleRange: range
         )
         
         // 蜡烛图背景
@@ -383,8 +381,7 @@ extension KLineView {
         // 创建一个新的 RenderData
         let renderData = RenderData(
             items: kLineItems,
-            visibleRange: range,
-            indices: indices
+            visibleRange: range
         )
         // 绘制时间轴
         timelineRenderer.transformer = transformer
@@ -418,8 +415,7 @@ extension KLineView {
             // 创建一个新的 RenderData
             let renderData: RenderData<Any> = RenderData(
                 items: indicatorDatas,
-                visibleRange: range,
-                indices: indices
+                visibleRange: range
             )
             // 绘制指标
             renderer.transformer = transformer
@@ -521,8 +517,7 @@ extension KLineView: UIGestureRecognizerDelegate {
         
         let data = RenderData(
             items: indicatorDatas,
-            visibleRange: scrollView.visibleRange,
-            indices: scrollView.indices
+            visibleRange: scrollView.visibleRange
         )
         if longPressRengerer.layer.superlayer == nil {
             chartView.layer.addSublayer(longPressRengerer.layer)
