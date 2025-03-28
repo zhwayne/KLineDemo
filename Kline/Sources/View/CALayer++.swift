@@ -1,0 +1,23 @@
+//
+//  File.swift
+//  KLine
+//
+//  Created by work on 2025/3/28.
+//
+
+import UIKit
+
+extension CALayer {
+    
+    var parentView: UIView? {
+        if let view = delegate as? UIView {
+            return view
+        }
+        for layer in sequence(first: superlayer, next: { $0?.superlayer }) {
+            if let view = layer?.delegate as? UIView {
+                return view
+            }
+        }
+        return nil
+    }
+}

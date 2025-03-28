@@ -355,7 +355,6 @@ extension KLineView {
         
         // 蜡烛图
         candleRenderer.transformer = transformer
-        candleRenderer.view = candleView
         candleRenderer.draw(in: candleView.canvas, data: itemRenderData)
         
         // 主图指标
@@ -468,10 +467,7 @@ extension KLineView: UIScrollViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
             drawVisibleContent()
-            if longPressRengerer.layer.superlayer != nil {
-                longPressRengerer.layer.sublayers = nil
-                longPressRengerer.layer.removeFromSuperlayer()
-            }
+            longPressRengerer.clean()
         }
     }
 }
@@ -523,18 +519,20 @@ extension KLineView: UIGestureRecognizerDelegate {
         
         guard let transformer = transformer else { return }
         
-        longPressRengerer.transformer = transformer
-        longPressRengerer.layer.frame = chartView.bounds
-        longPressRengerer.layer.sublayers = nil
-        if longPressRengerer.layer.superlayer == nil {
-            chartView.layer.addSublayer(longPressRengerer.layer)
-        }
-        var data = RenderData(
+        let data = RenderData(
             items: indicatorDatas,
             visibleRange: scrollView.visibleRange,
             indices: scrollView.indices
         )
-        data.gestureLocation = location
+        if longPressRengerer.layer.superlayer == nil {
+            chartView.layer.addSublayer(longPressRengerer.layer)
+        }
+        longPressRengerer.layer.frame = chartView.bounds
+        longPressRengerer.layer.sublayers = nil
+        longPressRengerer.location = location
+        longPressRengerer.timelineHeight = timelineHeight
+        longPressRengerer.timelineY = timelineView.frame.minY
+        longPressRengerer.transformer = transformer
         longPressRengerer.draw(in: longPressRengerer.layer, data: data)
     }
     
@@ -543,60 +541,5 @@ extension KLineView: UIGestureRecognizerDelegate {
             return false
         }
         return true
-    }
-}
-
-final class LongPressRenderer: ChartRenderer {
-    
-    let layer = CALayer()
-    
-    private let dateLabel = UILabel()
-    
-    var transformer: Transformer?
-    
-    typealias Item = IndicatorData
-    
-    init() {
-        dateLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
-        dateLabel.textAlignment = .center
-        dateLabel.backgroundColor = .label
-        dateLabel.textColor = .systemBackground
-        dateLabel.layer.cornerRadius = 4
-        dateLabel.layer.masksToBounds = true
-    }
-    
-    func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
-        guard let transformer = transformer else { return }
-        let rect = layer.bounds
-        
-        // 绘制十字线的y轴，从最顶部一直到最底部
-        let location: CGPoint = data.gestureLocation!
-        
-        // MARK: - 绘制y轴虚线
-        let dashLine = CAShapeLayer()
-        dashLine.strokeColor = UIColor.label.cgColor
-        dashLine.lineWidth = 1 / UIScreen.main.scale
-        dashLine.lineDashPattern = [2, 2]
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: location.x, y: 0))
-        path.addLine(to: CGPoint(x: location.x, y: rect.height))
-        dashLine.path = path.cgPath
-        layer.addSublayer(dashLine)
-        
-        // MARK: - 绘制日期时间轴
-        if let index = transformer.indexOfVisibleItem(at: location.x) {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy/MM/dd HH:mm"
-            let item = data.items[index].item
-            let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
-            let timeString = dateFormatter.string(from: date)
-            dateLabel.text = timeString
-            var size = dateLabel.systemLayoutSizeFitting(rect.size)
-            size.width += 8
-            var x = location.x - size.width * 0.5
-            x = max(0, min(x, rect.width - size.width))
-            dateLabel.frame = CGRect(x: x, y: 320, width: size.width, height: 16)
-            layer.addSublayer(dateLabel.layer)
-        }
     }
 }

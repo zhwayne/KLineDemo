@@ -12,9 +12,7 @@ final class CandleRenderer: ChartRenderer {
     var styleManager: StyleManager { .shared }
         
     var transformer: Transformer?
-    
-    weak var view: UIView?
-    
+        
     typealias Item = KLineItem
     
     private let priceIndicatorView = PriceIndicatorView()
@@ -182,7 +180,7 @@ final class CandleRenderer: ChartRenderer {
             priceIndicatorView.bounds.size = indicatorSize
             priceIndicatorView.frame.origin.y = y - indicatorSize.height * 0.5
             priceIndicatorView.frame.origin.x = start.x - 12 - indicatorSize.width
-            if priceIndicatorView.superview == nil, let view {
+            if priceIndicatorView.superview == nil, let view = layer.parentView {
                 view.addSubview(priceIndicatorView)
             }
         }
