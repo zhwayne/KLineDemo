@@ -1,5 +1,5 @@
 //
-//  LongPressRenderer.swift
+//  CrosshairRenderer.swift
 //  KLine
 //
 //  Created by work on 2025/3/28.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-final class LongPressRenderer: ChartRenderer {
+final class CrosshairRenderer: ChartRenderer {
     
     private let feedback = UISelectionFeedbackGenerator()
     private var styleManager: StyleManager { .shared }
@@ -107,7 +107,7 @@ final class LongPressRenderer: ChartRenderer {
         
         // MARK: - 绘制x轴虚线x
         let inMainChart = location.y > 0 && locationRect.minY < timelineY
-        let inSubChart = locationRect.minY > timelineY + timelineHeight
+        let inSubChart = locationRect.minY >= timelineY + timelineHeight
         && locationRect.inset(by: edgeInset).contains(location)
         if (inMainChart || inSubChart) {
             path.move(to: CGPoint(x: 0, y: location.y))

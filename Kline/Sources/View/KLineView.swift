@@ -34,7 +34,7 @@ enum ChartSection: Sendable {
     private let backgroundRenderer = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
-    private let longPressRengerer = LongPressRenderer()
+    private let crosshairRengerer = CrosshairRenderer()
     private var mainRenderers: [AnyIndicatorRenderer] = []
     private var subRenderers: [AnyIndicatorRenderer] = []
     
@@ -145,6 +145,9 @@ enum ChartSection: Sendable {
     public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         drawVisibleContent()
+        if let sublayers = chartView.canvas.sublayers, !sublayers.isEmpty {
+            drawCrosshair()
+        }
     }
    
     private func updateChartHeightConstraint() {
@@ -476,19 +479,19 @@ extension KLineView: UIGestureRecognizerDelegate {
     
     @objc private func handleTap(_ tap: UITapGestureRecognizer) {
         longPressLocation = tap.location(in: tap.view)
-        handleTapHandleLongPressGesture()
+        drawCrosshair()
     }
 
     @objc private func handleLongPress(_ longPress: UILongPressGestureRecognizer) {
         longPressLocation = longPress.location(in: longPress.view)
         switch longPress.state {
         case .began, .changed:
-            handleTapHandleLongPressGesture()
+            drawCrosshair()
         default: break
         }
     }
     
-    private func handleTapHandleLongPressGesture() {
+    private func drawCrosshair() {
         // MARK: - 绘制长按图层
         
         CATransaction.begin()
@@ -507,18 +510,18 @@ extension KLineView: UIGestureRecognizerDelegate {
         if candleView.frame.contains(location) {
             // 主图区域
             transformer = candleRenderer.transformer
-            longPressRengerer.locationRect = candleView.frame
+            crosshairRengerer.locationRect = candleView.frame
         } else if timelineView.frame.contains(location) {
             // 时间轴区域
             transformer = timelineRenderer.transformer
-            longPressRengerer.locationRect = timelineView.frame
+            crosshairRengerer.locationRect = timelineView.frame
         } else if !subRenderers.isEmpty {
             // 计算当前在副图区域的哪个指标上
             let offsetY = location.y - subIndicatorView.frame.minY
             let idx = min(Int(floor(offsetY / indicatorHeight)), subRenderers.count - 1)
             let renderer = subRenderers[idx]
             transformer = renderer.transformer
-            longPressRengerer.locationRect = CGRect(
+            crosshairRengerer.locationRect = CGRect(
                 x: 0,
                 y: subIndicatorView.frame.minY + CGFloat(idx) * indicatorHeight,
                 width: subIndicatorView.frame.width,
@@ -533,11 +536,11 @@ extension KLineView: UIGestureRecognizerDelegate {
             visibleRange: scrollView.visibleRange
         )
     
-        longPressRengerer.location = location
-        longPressRengerer.timelineHeight = timelineHeight
-        longPressRengerer.timelineY = timelineView.frame.minY
-        longPressRengerer.transformer = transformer
-        longPressRengerer.draw(in: chartView.canvas, data: data)
+        crosshairRengerer.location = location
+        crosshairRengerer.timelineHeight = timelineHeight
+        crosshairRengerer.timelineY = timelineView.frame.minY
+        crosshairRengerer.transformer = transformer
+        crosshairRengerer.draw(in: chartView.canvas, data: data)
     }
     
     private func cleanLongPressContetent() {
