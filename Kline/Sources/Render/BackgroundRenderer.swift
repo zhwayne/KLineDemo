@@ -52,7 +52,7 @@ final class BackgroundRenderer: ChartRenderer {
         let (stepSize, _) = calculateGridSteps(
             min: dataBounds.min,
             max: dataBounds.max,
-            maxLines: 8
+            maxLines: 6
         )
         
         guard stepSize > 0 else { return }

@@ -45,7 +45,7 @@ final class TimelineRenderer: ChartRenderer {
             let label = dateLayers[idx]
             label.foregroundColor = UIColor.secondaryLabel.cgColor
             
-            if let index = transformer.indexOfVisibleItem(at: label.position.x) {
+            if let index = transformer.indexOfVisibleItem(xAxis: label.position.x) {
                 let item = data.items[index]
                 let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
                 let timeString = dateFormatter.string(from: date)

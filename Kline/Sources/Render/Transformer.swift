@@ -22,7 +22,7 @@ struct AxisInset {
 @MainActor
 struct Transformer {
 
-    private let contentInset: AxisInset
+    var contentInset: AxisInset
     var dataBounds: MetricBounds
     let viewPort: CGRect
     let itemCount: Int
@@ -58,7 +58,7 @@ struct Transformer {
         xAxis(at: index) + viewPort.minX
     }
     
-    func indexOfVisibleItem(at x: CGFloat, extend: Bool = false) -> Int? {
+    func indexOfVisibleItem(xAxis x: CGFloat, extend: Bool = false) -> Int? {
         var index = Int(floor((x - viewPort.minX) / itemWidth))
         if viewPort.minX <= 0 {
             index += indices.lowerBound
@@ -84,5 +84,12 @@ struct Transformer {
     
     func yAxis(for value: Double) -> CGFloat {
         return yAxis(for: value, inset: .zero)
+    }
+    
+    func valueOf(yAxis y: CGFloat) -> Double {
+        let topY = contentInset.top
+        let bottomY = viewPort.height - contentInset.bottom
+        let valueRatio = CGFloat((y - topY) / (bottomY - topY))
+        return dataBounds.min + (1 - valueRatio) * dataBounds.distance
     }
 }

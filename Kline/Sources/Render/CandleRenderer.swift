@@ -207,11 +207,11 @@ private final class PriceIndicatorView: UIControl {
         arrowView.tintColor = UIColor.label.withAlphaComponent(0.8)
         
         layer.borderWidth = 1 / UIScreen.main.scale
-        layer.borderColor = UIColor.separator.cgColor
+        layer.borderColor = UIColor.label.withAlphaComponent(0.8).cgColor
         layer.cornerRadius = 4
         layer.masksToBounds = true
         
-        let visualEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .regular))
+        let visualEffectView = UIVisualEffectView(effect: UIBlurEffect(style: .light))
         visualEffectView.alpha = 0.9
         visualEffectView.isUserInteractionEnabled = false
         addSubview(visualEffectView)
@@ -242,5 +242,10 @@ private final class PriceIndicatorView: UIControl {
     
     @objc private func onClick() {
         NotificationCenter.default.post(name: .scrollToTop, object: nil)
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        layer.borderColor = UIColor.label.withAlphaComponent(0.8).cgColor
     }
 }

@@ -16,7 +16,7 @@ enum ChartSection: Sendable {
 @MainActor public final class KLineView: UIView {
 
     // MARK: - Views
-    private let chartView = UIView()
+    private let chartView = CanvasView()
     private let scrollView = HorizontalScrollView()
     private let candleView = CanvasView()
     private let legendLabel = UILabel()
@@ -27,8 +27,8 @@ enum ChartSection: Sendable {
     // MARK: - Height defines
     private let candleHeight: CGFloat = 320
     private let timelineHeight: CGFloat = 16
+    private let indicatorHeight: CGFloat = 64
     private let indicatorTypeHeight: CGFloat = 32
-    private let indicatorHeight: CGFloat = 80
     private var chartHeightConstraint: Constraint!
     
     private let backgroundRenderer = BackgroundRenderer()
@@ -45,6 +45,7 @@ enum ChartSection: Sendable {
     private var indicatorDatas: [IndicatorData] = []
     private var calculators: [any IndicatorCalculator] = []
     private var styleManager: StyleManager { .shared }
+    private var longPressLocation: CGPoint = .zero
     
     private var disposeBag = Set<AnyCancellable>()
     
@@ -101,7 +102,7 @@ enum ChartSection: Sendable {
         }
         
         legendLabel.numberOfLines = 0
-        chartView.addSubview(legendLabel)
+        scrollView.contentView.addSubview(legendLabel)
         legendLabel.snp.makeConstraints { make in
             make.left.equalTo(12)
             make.width.equalToSuperview().multipliedBy(0.8)
@@ -116,7 +117,7 @@ enum ChartSection: Sendable {
         )
         tap.cancelsTouchesInView = false
         tap.delegate = self
-        scrollView.contentView.addGestureRecognizer(tap)
+        chartView.addGestureRecognizer(tap)
         // long press
         let longPress = UILongPressGestureRecognizer(
             target: self,
@@ -126,7 +127,7 @@ enum ChartSection: Sendable {
         longPress.allowableMovement = 2
         longPress.cancelsTouchesInView = false
         longPress.delegate = self
-        scrollView.contentView.addGestureRecognizer(longPress)
+        chartView.addGestureRecognizer(longPress)
         
         setupBindings()
     }
@@ -148,6 +149,7 @@ enum ChartSection: Sendable {
    
     private func updateChartHeightConstraint() {
         chartHeightConstraint.update(offset: scrollViewHeight)
+        cleanLongPressContetent()
     }
     
     private func setupBindings() {
@@ -406,6 +408,7 @@ extension KLineView {
             )
             // 创建一个新的 transformer
             let transformer = Transformer(
+                contentInset: AxisInset(top: 26, bottom: 2),
                 dataBounds: dataBounds,
                 viewPort: viewPort,
                 itemCount: indicatorDatas.count,
@@ -463,7 +466,7 @@ extension KLineView: UIScrollViewDelegate {
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if scrollView === self.scrollView {
             drawVisibleContent()
-            longPressRengerer.clean()
+            cleanLongPressContetent()
         }
     }
 }
@@ -472,20 +475,21 @@ extension KLineView: UIScrollViewDelegate {
 extension KLineView: UIGestureRecognizerDelegate {
     
     @objc private func handleTap(_ tap: UITapGestureRecognizer) {
-        handleTapHandleLongPressGesture(tap)
+        longPressLocation = tap.location(in: tap.view)
+        handleTapHandleLongPressGesture()
     }
 
     @objc private func handleLongPress(_ longPress: UILongPressGestureRecognizer) {
+        longPressLocation = longPress.location(in: longPress.view)
         switch longPress.state {
         case .began, .changed:
-            handleTapHandleLongPressGesture(longPress)
+            handleTapHandleLongPressGesture()
         default: break
         }
     }
     
-    private func handleTapHandleLongPressGesture(_ gesture: UIGestureRecognizer) {
+    private func handleTapHandleLongPressGesture() {
         // MARK: - 绘制长按图层
-        guard let view = gesture.view else { return }
         
         CATransaction.begin()
         CATransaction.setDisableActions(false)
@@ -494,23 +498,32 @@ extension KLineView: UIGestureRecognizerDelegate {
             CATransaction.commit()
         }
         
-        var location = gesture.location(in: view)
-        location.y = min(max(0, location.y), view.bounds.height - 1)
+        var location = longPressLocation
+        location.y = min(max(0, location.y), scrollView.contentView.bounds.height - 1)
+        longPressLocation = location
         
         var transformer: Transformer?
         // 判断当前是在哪个区域
         if candleView.frame.contains(location) {
             // 主图区域
             transformer = candleRenderer.transformer
+            longPressRengerer.locationRect = candleView.frame
         } else if timelineView.frame.contains(location) {
             // 时间轴区域
             transformer = timelineRenderer.transformer
+            longPressRengerer.locationRect = timelineView.frame
         } else if !subRenderers.isEmpty {
             // 计算当前在副图区域的哪个指标上
             let offsetY = location.y - subIndicatorView.frame.minY
-            let idx = min(Int(ceil(offsetY / indicatorHeight)), subRenderers.count - 1)
+            let idx = min(Int(floor(offsetY / indicatorHeight)), subRenderers.count - 1)
             let renderer = subRenderers[idx]
             transformer = renderer.transformer
+            longPressRengerer.locationRect = CGRect(
+                x: 0,
+                y: subIndicatorView.frame.minY + CGFloat(idx) * indicatorHeight,
+                width: subIndicatorView.frame.width,
+                height: indicatorHeight
+            )
         }
         
         guard let transformer = transformer else { return }
@@ -519,16 +532,19 @@ extension KLineView: UIGestureRecognizerDelegate {
             items: indicatorDatas,
             visibleRange: scrollView.visibleRange
         )
-        if longPressRengerer.layer.superlayer == nil {
-            chartView.layer.addSublayer(longPressRengerer.layer)
-        }
-        longPressRengerer.layer.frame = chartView.bounds
-        longPressRengerer.layer.sublayers = nil
+    
         longPressRengerer.location = location
         longPressRengerer.timelineHeight = timelineHeight
         longPressRengerer.timelineY = timelineView.frame.minY
         longPressRengerer.transformer = transformer
-        longPressRengerer.draw(in: longPressRengerer.layer, data: data)
+        longPressRengerer.draw(in: chartView.canvas, data: data)
+    }
+    
+    private func cleanLongPressContetent() {
+        chartView.canvas.sublayers = nil
+        for view in chartView.subviews where view !== scrollView {
+            view.removeFromSuperview()
+        }
     }
     
     public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {

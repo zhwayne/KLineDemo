@@ -49,9 +49,9 @@ extension ChartRenderer {
         let rect = CGRectMake(0, viewPort.minY, layer.bounds.width, viewPort.height)
         // (不包含第一列和最后一列)
         let gridLayer = CAShapeLayer()
-        gridLayer.lineWidth = 1 / UIScreen.main.scale
         gridLayer.fillColor = UIColor.clear.cgColor
         gridLayer.strokeColor = UIColor.systemFill.cgColor
+        gridLayer.lineWidth = 1 / UIScreen.main.scale
         gridLayer.contentsScale = UIScreen.main.scale
         
         let gridColumns = 6

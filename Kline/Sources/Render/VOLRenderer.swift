@@ -44,14 +44,12 @@ final class VOLRenderer: IndicatorRenderer {
         let size = textLayer.preferredFrameSize()
         textLayer.frame = CGRect(x: 12, y: rect.minY + 8, width: size.width, height: size.height)
         layer.addSublayer(textLayer)
-        
-        let verticalInset = AxisInset(top: textLayer.bounds.height + 16, bottom: 2)
-        
+                
         // MARK: - 折线图
         for (idx, item) in items.enumerated() {
             // 计算 x 坐标
             let x = transformer.xAxis(at: idx)
-            let y = transformer.yAxis(for: Double(item.item.volume), inset: verticalInset)
+            let y = transformer.yAxis(for: Double(item.item.volume))
             let rect = CGRect(x: x, y: y, width: candleStyle.width, height: rect.height - y - 2)
             let path = UIBezierPath(rect: rect)
             

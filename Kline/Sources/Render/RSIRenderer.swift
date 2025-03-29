@@ -18,8 +18,8 @@ final class RSIRenderer: IndicatorRenderer {
     var type: IndicatorType { .rsi }
     
     func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
-        guard var transformer = transformer else { return }
-        transformer.dataBounds.combine(other: .init(max: 70, min: 30))
+        transformer?.dataBounds.combine(other: .init(max: 70, min: 30))
+        guard let transformer = transformer else { return }
         
         let rect = transformer.viewPort
         let candleStyle = styleManager.candleStyle
@@ -66,7 +66,6 @@ final class RSIRenderer: IndicatorRenderer {
         
 
         // MARK: - 折线图
-        let verticalInset = AxisInset(top: textLayer.bounds.height + 16, bottom: 2)
         for key in type.keys {
             let indicatorStyle = styleManager.indicatorStyle(for: key)
             let lineLayer = CAShapeLayer()
@@ -84,7 +83,7 @@ final class RSIRenderer: IndicatorRenderer {
                 }
                 // 计算 x 坐标
                 let x = transformer.xAxis(at: idx) + candleStyle.width * 0.5
-                let y = transformer.yAxis(for: value, inset: verticalInset)
+                let y = transformer.yAxis(for: value)
                 let point = CGPoint(x: x, y: y)
                 
                 if !hasStartPoint {
@@ -101,8 +100,8 @@ final class RSIRenderer: IndicatorRenderer {
         }
         
         // MARK: - 超买和超卖区域
-        let oby = transformer.yAxis(for: 70, inset: verticalInset)
-        let osy = transformer.yAxis(for: 30, inset: verticalInset)
+        let oby = transformer.yAxis(for: 70)
+        let osy = transformer.yAxis(for: 30)
         let maxX = transformer.xAxis(at: visibleItems.count - 1) + candleStyle.width * 0.5
         let overRect = CGRect(x: 0, y: oby, width: maxX, height: osy - oby)
         let overAreaShape = CAShapeLayer()
