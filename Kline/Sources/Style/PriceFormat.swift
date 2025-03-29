@@ -7,7 +7,7 @@
 
 import Foundation
 
-
+// TODO: 格式化功能从 StyleManager 中分离出去
 extension StyleManager {
     
     func format(value: Double) -> String {

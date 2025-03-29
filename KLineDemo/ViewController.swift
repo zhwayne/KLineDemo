@@ -38,7 +38,7 @@ class ViewController: UIViewController {
                 highest: json.arrayValue[2].doubleValue,
                 lowest: json.arrayValue[3].doubleValue,
                 volume: json.arrayValue[4].intValue,
-                value: 0,
+                value: Double.random(in: 10000...10000000),
                 timestamp: json.arrayValue[5].intValue
             )
         }

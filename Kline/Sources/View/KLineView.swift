@@ -31,6 +31,7 @@ enum ChartSection: Sendable {
     private let indicatorTypeHeight: CGFloat = 32
     private var chartHeightConstraint: Constraint!
     
+    // MARK: - Renderers
     private let backgroundRenderer = BackgroundRenderer()
     private let candleRenderer = CandleRenderer()
     private let timelineRenderer = TimelineRenderer()
@@ -225,6 +226,7 @@ extension KLineView {
     }
     
     private func eraseMainIndicator(type: IndicatorType) async {
+        // FIXME: 当擦除主图中的VOL指标时，幅图中的VOL指标也会被擦除。
         mainIndicatorTypes.removeAll(where: { $0 == type })
         mainRenderers.removeAll { $0.type == type }
         for key in type.keys {
@@ -485,8 +487,7 @@ extension KLineView: UIGestureRecognizerDelegate {
     @objc private func handleLongPress(_ longPress: UILongPressGestureRecognizer) {
         longPressLocation = longPress.location(in: longPress.view)
         switch longPress.state {
-        case .began, .changed:
-            drawCrosshair()
+        case .began, .changed: drawCrosshair()
         default: break
         }
     }
@@ -511,6 +512,7 @@ extension KLineView: UIGestureRecognizerDelegate {
             // 主图区域
             transformer = candleRenderer.transformer
             crosshairRengerer.locationRect = candleView.frame
+            crosshairRengerer.klineItemY = transformer!.contentInset.top
         } else if timelineView.frame.contains(location) {
             // 时间轴区域
             transformer = timelineRenderer.transformer

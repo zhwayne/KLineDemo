@@ -11,30 +11,24 @@ final class CrosshairRenderer: ChartRenderer {
     
     private let feedback = UISelectionFeedbackGenerator()
     private var styleManager: StyleManager { .shared }
-//    private let dateBgLayer = CALayer()
-//    private let dateLayer = CATextLayer()
-    private let dateLabel = UILabel()
+    private let dateLabel = EdgeInsetLabel()
     private let dateFormatter: DateFormatter
     private let dashLineLayer = CAShapeLayer()
     private let pointLayer = CAShapeLayer()
-    private let yAxisValueLabel = UILabel()
+    private let yAxisValueLabel = EdgeInsetLabel()
+    private let klineItemView = KLineItemView()
     private var lastLocationX: CGFloat = 0
     var location: CGPoint = .zero
     var locationRect: CGRect = .zero
     var transformer: Transformer?
+    var klineItemY: CGFloat = 0
     var timelineY: CGFloat = 0
     var timelineHeight: CGFloat = 0
     
     typealias Item = IndicatorData
     
     init() {
-//        dateBgLayer.contentsScale = UIScreen.main.scale
-//        dateBgLayer.cornerRadius = 3
-//        dateLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
-//        dateLayer.fontSize = 10
-//        dateLayer.alignmentMode = .center
-//        dateLayer.contentsScale = UIScreen.main.scale
-//        dateBgLayer.addSublayer(dateLayer)
+        dateLabel.edgeInsets = UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4)
         dateLabel.backgroundColor = .label
         dateLabel.textColor = .systemBackground
         dateLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
@@ -42,6 +36,7 @@ final class CrosshairRenderer: ChartRenderer {
         dateLabel.layer.masksToBounds = true
         dateLabel.layer.cornerRadius = 3
         
+        yAxisValueLabel.edgeInsets = UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4)
         yAxisValueLabel.backgroundColor = .label
         yAxisValueLabel.textColor = .systemBackground
         yAxisValueLabel.font = .monospacedDigitSystemFont(ofSize: 10, weight: .regular)
@@ -58,13 +53,6 @@ final class CrosshairRenderer: ChartRenderer {
         feedback.prepare()
     }
     
-//    func clean() {
-//        dashLineLayer.removeFromSuperlayer()
-//        pointLayer.removeFromSuperlayer()
-//        dateLabel.removeFromSuperview()
-//        yAxisValueLabel.removeFromSuperview()
-//    }
-    
     func draw(in layer: CALayer, data: RenderData<IndicatorData>) {
         guard let transformer = transformer else { return }
         pointLayer.path = nil
@@ -77,6 +65,9 @@ final class CrosshairRenderer: ChartRenderer {
         }
         if yAxisValueLabel.superview == nil, let view = layer.owningView {
             view.addSubview(yAxisValueLabel)
+        }
+        if klineItemView.superview == nil, let view = layer.owningView {
+            view.addSubview(klineItemView)
         }
         
         let rect = layer.bounds
@@ -127,11 +118,9 @@ final class CrosshairRenderer: ChartRenderer {
             let value = transformer.valueOf(yAxis: location.y - locationRect.minY)
             
             yAxisValueLabel.text = styleManager.format(value: value)
-            var size = yAxisValueLabel.systemLayoutSizeFitting(rect.size)
-            size.width += 10
-            size.height += 10
+            let size = yAxisValueLabel.systemLayoutSizeFitting(rect.size)
             yAxisValueLabel.frame = CGRect(
-                x: rect.width - size.width - 10,
+                x: rect.width - size.width - 12,
                 y: location.y - size.height * 0.5,
                 width: size.width,
                 height: size.height
@@ -140,65 +129,37 @@ final class CrosshairRenderer: ChartRenderer {
             yAxisValueLabel.isHidden = true
         }
         
-        // MARK: - 绘制日期时间轴
         if index >= 0 && index < data.items.count {
+            // MARK: - 绘制日期时间轴
             dateLabel.isHidden = false
             let item = data.items[index].item
             let date = Date(timeIntervalSince1970: TimeInterval(item.timestamp))
             let timeString = dateFormatter.string(from: date)
             dateLabel.text = timeString
-            let size = dateLabel.systemLayoutSizeFitting(rect.size)
-            let x = location.x - (size.width + 10) * 0.5
-            let bgRect = CGRect(
-                x: max(0, min(x, rect.width - size.width - 10)),
+            let dateSize = dateLabel.systemLayoutSizeFitting(rect.size)
+            let dateX = location.x - dateSize.width * 0.5
+            let dateRect = CGRect(
+                x: max(0, min(dateX, rect.width - dateSize.width)),
                 y: timelineY,
-                width: size.width + 10,
+                width: dateSize.width,
                 height: timelineHeight
             )
-            dateLabel.frame = bgRect
+            dateLabel.frame = dateRect
+            
+            // MARK: - Kline 详情
+            klineItemView.isHidden = false
+            klineItemView.item = data.items[index].item
+            let rightSide = location.x < layer.bounds.midX
+            let klineSize = klineItemView.systemLayoutSizeFitting(rect.size)
+            let klineX = rightSide ? rect.width * 4 / 5 - klineSize.width : 12
+            let klineY = klineItemY
+            let klineRect = CGRect(x: klineX, y: klineY, width: klineSize.width, height: klineSize.height)
+            klineItemView.frame = klineRect
         } else {
-            // TODO: 根据K线周期计算当前x轴的日期
+            klineItemView.isHidden = true
+            // FIXME: 根据K线周期计算当前x轴的日期
             dateLabel.text = nil
             dateLabel.isHidden = true
         }
     }
 }
-
-//private class YAxisValueTextLayer: CALayer {
-//    
-//    private let textLayer = CATextLayer()
-//    
-//    private var foregroundColor: CGColor? {
-//        get { textLayer.foregroundColor }
-//        set { textLayer.foregroundColor = newValue }
-//    }
-//    
-//    private var string: Any? {
-//        get { textLayer.string }
-//        set { textLayer.string = newValue }
-//    }
-//    
-//    override init() {
-//        super.init()
-//        textLayer.font = UIFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular) as CTFont
-//        textLayer.fontSize = 10
-//        addSublayer(textLayer)
-//    }
-//    
-//    override func layoutSublayers() {
-//        super.layoutSublayers()
-//        let size = textLayer.preferredFrameSize()
-//        textLayer.frame = CGRect(x: <#T##Int#>, y: <#T##Int#>, width: <#T##Int#>, height: <#T##Int#>)
-//    }
-//    
-//    override func preferredFrameSize() -> CGSize {
-//        var size = textLayer.preferredFrameSize()
-//        size.width += 8
-//        size.height += 8
-//        return size
-//    }
-//    
-//    required init?(coder: NSCoder) {
-//        fatalError("init(coder:) has not been implemented")
-//    }
-//}
